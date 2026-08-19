@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#1f4e78">
-  <title>幼儿园食材用量识别工具 V3</title>
+  <title>幼儿园食材用量识别工具 V4</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
   <style>
@@ -369,7 +369,7 @@
         <div class="brand-mark" aria-hidden="true">▦</div>
         <div>
           <h1>幼儿园食材用量识别工具</h1>
-          <p>Excel精准读取 · 指定周识别 · 多周独立统计 · V3</p>
+          <p>Excel精准读取 · 指定周识别 · 多周独立统计 · V4</p>
         </div>
       </div>
       <div class="privacy-pill">文件仅在当前浏览器内处理</div>
@@ -383,7 +383,7 @@
         <h2>上传菜谱 Excel，生成每日食材用量</h2>
         <p class="hero-copy">直接读取Excel单元格，自动忽略“第…周带量”。可指定只识别某一周；不填写周次时，自动统计文件内全部“第…周”工作表。</p>
         <div class="hero-tags">
-          <span class="hero-tag">GitHub版 V3</span>
+          <span class="hero-tag">GitHub版 V4</span>
           <span class="hero-tag">适配GitHub Pages</span>
           <span class="hero-tag">学生人数可修改</span>
           <span class="hero-tag">多周独立数据卡</span>
@@ -409,11 +409,9 @@
           <div class="panel-body">
             <div class="form-grid">
               <div class="field"><label for="studentCount">学生人数</label><input id="studentCount" class="input parameter" type="number" min="1" max="5000" step="1" value="20"></div>
-              <div class="field"><label for="jinGrams">1斤等于多少克</label><input id="jinGrams" class="input parameter" type="number" min="1" step="1" value="500"></div>
               <div class="field wide"><label for="targetWeek">识别第几周（选填）</label><input id="targetWeek" class="input parameter" type="text" inputmode="text" placeholder="例如：第九周或9；留空则统计整个Excel"></div>
-              <div class="field"><label for="weekStart">默认周一日期</label><input id="weekStart" class="input" type="date"></div>
-              <div class="field"><label for="smallMilk">托小班奶量（升/人）</label><input id="smallMilk" class="input" type="number" min="0" step="0.01" value="0.09"></div>
-              <div class="field"><label for="middleMilk">中班奶量（升/人）</label><input id="middleMilk" class="input" type="number" min="0" step="0.01" value="0.10"></div>
+              <div class="field"><label for="smallMilk">托小班奶量（ml/人）</label><input id="smallMilk" class="input" type="number" min="0" step="1" value="90"></div>
+              <div class="field"><label for="middleMilk">中班奶量（ml/人）</label><input id="middleMilk" class="input" type="number" min="0" step="1" value="100"></div>
               <div class="field"><label for="schoolName">学校名称（选填）</label><input id="schoolName" class="input" type="text" placeholder="幼儿园名称"></div>
             </div>
 
@@ -497,6 +495,7 @@
         excelFile: null,
         ignoredSheets: [],
         downloadUrl: "",
+        defaultDate: "",
         nextId: 1,
       };
 
@@ -577,7 +576,7 @@
 
       function newRow({ week = "", date, meal = "未分类", ingredient = "", grams = 0, sick = false }) {
         const fallbackWeek = state.activeWeek || "手动录入";
-        return { id: state.nextId++, week: String(week || fallbackWeek), date: validIsoDate(date) ? date : $("weekStart").value, meal, ingredient, grams: Number(grams) || 0, sick: Boolean(sick) };
+        return { id: state.nextId++, week: String(week || fallbackWeek), date: validIsoDate(date) ? date : (state.defaultDate || getMonday()), meal, ingredient, grams: Number(grams) || 0, sick: Boolean(sick) };
       }
 
       function escapeHtml(value) {
@@ -585,7 +584,7 @@
       }
 
       function studentCount() { return Math.max(1, Number($("studentCount").value) || 20); }
-      function jinGrams() { return Math.max(1, Number($("jinGrams").value) || 500); }
+      function jinGrams() { return 500; }
       function totalGrams(row) { return row.grams * studentCount(); }
       function totalJin(row) { return totalGrams(row) / jinGrams(); }
 
@@ -804,7 +803,7 @@
       function inferWorkbookYear(grid) {
         const sample = grid.slice(0, 30).flat().join(" ");
         const match = sample.match(/(20\d{2})\s*(?:年|[\/\.\-])/);
-        return match ? Number(match[1]) : Number(($("weekStart").value || getMonday()).slice(0, 4));
+        return match ? Number(match[1]) : Number((state.defaultDate || getMonday()).slice(0, 4));
       }
 
       function parseExcelDate(value, fallbackYear, previousDate = "") {
@@ -966,7 +965,7 @@
           state.rows = mergeDuplicateRows(allRows);
           syncWeeks();
           const earliest = state.rows.map((row) => row.date).filter(validIsoDate).sort()[0];
-          if (earliest) $("weekStart").value = earliest;
+          if (earliest) state.defaultDate = earliest;
           $("removeExcelBtn").disabled = false;
           const ignoredText = ignored.length ? `；已忽略：${ignored.join("、")}` : "";
           const failedText = failed.length ? `；未读取：${failed.join("、")}` : "";
@@ -1065,16 +1064,22 @@
         };
       }
 
-      function fillParameterRow(ws, students, oneJin, smallMilk, middleMilk) {
-        ws.getRow(3).values = ["学生人数", students, "1斤克数", oneJin, "托小班每人奶量(L)", smallMilk, "中班每人奶量(L)", middleMilk];
-        for (const col of [1, 3, 5, 7]) {
+      function setRowValues(ws, rowNumber, values) {
+        values.forEach((value, index) => {
+          ws.getRow(rowNumber).getCell(index + 1).value = value;
+        });
+      }
+
+      function fillParameterRow(ws, students, smallMilk, middleMilk) {
+        setRowValues(ws, 3, ["学生人数", students, "托小班每人奶量(ml)", smallMilk, "中班每人奶量(ml)", middleMilk]);
+        for (const col of [1, 3, 5]) {
           const cell = ws.getRow(3).getCell(col);
           cell.font = { name: "Microsoft YaHei", bold: true, color: { argb: colors.navy } };
           cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: argb("D9EAF7") } };
           cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
           cell.border = thinBorder;
         }
-        for (const col of [2, 4, 6, 8]) {
+        for (const col of [2, 4, 6]) {
           const cell = ws.getRow(3).getCell(col);
           cell.font = { name: "Microsoft YaHei", bold: true, color: { argb: argb("7F6000") } };
           cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: colors.yellow } };
@@ -1088,7 +1093,7 @@
         const { students, oneJin, smallMilk, middleMilk, titlePrefix } = options;
         const ws = workbook.addWorksheet(safeSheetName(week, usedNames), { views: [{ showGridLines: false, state: "frozen", ySplit: 4 }] });
         styleTitle(ws, "I", `${titlePrefix}${week}｜每天食材用量统计（${students}名学生）`);
-        fillParameterRow(ws, students, oneJin, smallMilk, middleMilk);
+        fillParameterRow(ws, students, smallMilk, middleMilk);
         styleNote(ws, "A4:I4", "每天使用深蓝色日期栏、表头、当日合计和空白行分隔；当日合计不包含病号菜。黄色参数可修改。", colors.pale, colors.navy);
         ws.getRow(4).height = 28;
         ws.columns = [{ width: 15 }, { width: 10 }, { width: 16 }, { width: 24 }, { width: 16 }, { width: 13 }, { width: 16 }, { width: 15 }, { width: 12 }];
@@ -1116,7 +1121,7 @@
           ws.getRow(cursor).height = 27;
           cursor += 1;
 
-          ws.getRow(cursor).values = ["日期", "星期", "餐次", "食材", "每人用量(g)", "学生人数", "总量(g)", "总量(斤)", "病号菜"];
+          setRowValues(ws, cursor, ["日期", "星期", "餐次", "食材", "每人用量(g)", "学生人数", "总量(g)", "总量(斤)", "病号菜"]);
           styleHeader(ws.getRow(cursor));
           const headerRow = cursor;
           cursor += 1;
@@ -1132,7 +1137,7 @@
             ws.getCell(`E${rowNumber}`).value = item.grams;
             ws.getCell(`F${rowNumber}`).value = { formula: "$B$3", result: students };
             ws.getCell(`G${rowNumber}`).value = { formula: `E${rowNumber}*F${rowNumber}`, result: item.grams * students };
-            ws.getCell(`H${rowNumber}`).value = { formula: `G${rowNumber}/$D$3`, result: item.grams * students / oneJin };
+            ws.getCell(`H${rowNumber}`).value = { formula: `G${rowNumber}/${oneJin}`, result: item.grams * students / oneJin };
             ws.getCell(`I${rowNumber}`).value = item.sick ? "是" : "否";
             const row = ws.getRow(rowNumber);
             row.height = 23;
@@ -1216,8 +1221,8 @@
           const usedNames = new Set();
           const overview = workbook.addWorksheet(safeSheetName("多周总览", usedNames), { views: [{ showGridLines: false, state: "frozen", ySplit: 5 }] });
           styleTitle(overview, "H", `${titlePrefix}多周食材用量总览（${students}名学生）`);
-          fillParameterRow(overview, students, oneJin, smallMilk, middleMilk);
-          overview.getRow(5).values = ["周次", "日期范围", "天数", "食材项数", "正常餐合计(斤)", "病号菜合计(斤)", "处理说明"];
+          fillParameterRow(overview, students, smallMilk, middleMilk);
+          setRowValues(overview, 5, ["周次", "日期范围", "天数", "食材项数", "正常餐合计(斤)", "病号菜合计(斤)", "处理说明"]);
           styleHeader(overview.getRow(5));
           overview.columns = [{ width: 14 }, { width: 25 }, { width: 10 }, { width: 13 }, { width: 19 }, { width: 19 }, { width: 38 }, { width: 3 }];
 
@@ -1230,7 +1235,7 @@
           summaries.forEach((item, index) => {
             const rowNumber = 6 + index;
             const dates = item.dateEntries.map(([date]) => date);
-            overview.getRow(rowNumber).values = [
+            setRowValues(overview, rowNumber, [
               item.week,
               dates.length ? `${dates[0]} 至 ${dates[dates.length - 1]}` : "",
               dates.length,
@@ -1238,7 +1243,7 @@
               item.normalTotal,
               item.sickTotal,
               state.ignoredSheets.length ? `已自动忽略：${state.ignoredSheets.join("、")}` : "仅处理名称为“第…周”的工作表",
-            ];
+            ]);
             overview.getCell(`E${rowNumber}`).numFmt = "0.000";
             overview.getCell(`F${rowNumber}`).numFmt = "0.000";
             overview.getRow(rowNumber).height = 25;
@@ -1273,9 +1278,8 @@
         }
       }
 
-      $("weekStart").value = getMonday();
+      state.defaultDate = getMonday();
       $("studentCount").addEventListener("input", updateComputedCells);
-      $("jinGrams").addEventListener("input", updateComputedCells);
       $("excelInput").addEventListener("change", (event) => handleExcel(event.target.files[0]));
       $("removeExcelBtn").addEventListener("click", removeExcel);
       $("targetWeek").addEventListener("change", () => {
@@ -1286,7 +1290,7 @@
           state.activeWeek = "手动录入";
           state.weekOrder = [state.activeWeek];
         }
-        state.rows.push(newRow({ week: state.activeWeek, date: $("weekStart").value, meal: "未分类" }));
+        state.rows.push(newRow({ week: state.activeWeek, date: state.defaultDate, meal: "未分类" }));
         renderRows();
         const wrap = document.querySelector(".table-wrap");
         wrap.scrollTop = wrap.scrollHeight;
