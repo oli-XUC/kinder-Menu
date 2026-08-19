@@ -1,0 +1,1214 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1f4e78">
+  <title>幼儿园食材用量识别工具</title>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+  <style>
+    :root {
+      --navy: #1f4e78;
+      --blue: #5b9bd5;
+      --blue-100: #eaf3fb;
+      --blue-200: #d5e8f6;
+      --ink: #17324d;
+      --muted: #60758a;
+      --line: #d7e3ed;
+      --paper: #ffffff;
+      --bg: #eef4f9;
+      --green: #23815e;
+      --green-bg: #e9f7f1;
+      --amber: #8a6200;
+      --amber-bg: #fff4cf;
+      --red: #b42318;
+      --red-bg: #fff0ee;
+      --shadow: 0 12px 34px rgba(31, 78, 120, 0.09);
+      font-family: "Noto Sans SC", "Microsoft YaHei", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 6% 0%, rgba(91, 155, 213, .16), transparent 28rem),
+        var(--bg);
+    }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled { cursor: not-allowed; opacity: .52; }
+    [hidden] { display: none !important; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      color: #fff;
+      background: rgba(31, 78, 120, .96);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid rgba(255,255,255,.14);
+    }
+    .topbar-inner {
+      max-width: 1460px;
+      margin: 0 auto;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .brand-mark {
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      background: rgba(255,255,255,.14);
+      font-size: 22px;
+      flex: 0 0 auto;
+    }
+    .brand h1 { margin: 0; font-size: 18px; letter-spacing: .02em; }
+    .brand p { margin: 3px 0 0; font-size: 12px; color: rgba(255,255,255,.72); }
+    .privacy-pill {
+      white-space: nowrap;
+      border: 1px solid rgba(255,255,255,.24);
+      border-radius: 999px;
+      padding: 7px 11px;
+      color: rgba(255,255,255,.88);
+      font-size: 12px;
+    }
+
+    .page {
+      max-width: 1460px;
+      margin: 0 auto;
+      padding: 26px 24px 52px;
+    }
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(280px, .65fr);
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+    .hero-main, .flow-card, .panel {
+      background: var(--paper);
+      border: 1px solid rgba(182, 204, 222, .82);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+    }
+    .hero-main { padding: 28px 30px; }
+    .eyebrow {
+      margin: 0 0 10px;
+      color: var(--blue);
+      font-weight: 800;
+      font-size: 12px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+    .hero h2 { margin: 0; color: var(--navy); font-size: clamp(26px, 3.2vw, 42px); line-height: 1.18; }
+    .hero-copy { margin: 14px 0 0; max-width: 850px; color: var(--muted); line-height: 1.8; }
+    .hero-tags { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 8px; }
+    .hero-tag {
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: var(--blue-100);
+      color: var(--navy);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .flow-card { padding: 22px; }
+    .flow-card h3 { margin: 0 0 16px; color: var(--navy); font-size: 16px; }
+    .flow-step { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: start; margin-top: 12px; }
+    .flow-index { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 9px; color: #fff; background: var(--blue); font-weight: 800; font-size: 12px; }
+    .flow-step strong { display: block; font-size: 13px; }
+    .flow-step span { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(360px, .78fr) minmax(0, 1.22fr);
+      gap: 18px;
+      align-items: start;
+    }
+    .stack { display: grid; gap: 18px; }
+    .panel { overflow: hidden; }
+    .panel-head {
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #fff, #fbfdff);
+    }
+    .panel-title { display: flex; gap: 11px; align-items: center; }
+    .step-badge { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 10px; color: #fff; background: var(--navy); font-weight: 800; font-size: 13px; }
+    .panel-head h3 { margin: 0; color: var(--navy); font-size: 16px; }
+    .panel-head p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+    .panel-body { padding: 20px; }
+
+    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .field { min-width: 0; }
+    .field.wide { grid-column: 1 / -1; }
+    .field label { display: block; margin-bottom: 7px; color: var(--muted); font-size: 12px; font-weight: 700; }
+    .input, .select, .textarea {
+      width: 100%;
+      border: 1px solid #c9d8e5;
+      border-radius: 11px;
+      color: var(--ink);
+      background: #fff;
+      outline: none;
+      transition: border-color .16s, box-shadow .16s;
+    }
+    .input, .select { height: 42px; padding: 0 12px; }
+    .textarea { min-height: 150px; padding: 12px; resize: vertical; line-height: 1.65; }
+    .input:focus, .select:focus, .textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(91,155,213,.14); }
+    .input.parameter { background: var(--amber-bg); border-color: #e3c65c; font-weight: 800; color: #6d5100; }
+
+    .dropzone {
+      position: relative;
+      min-height: 220px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      border: 2px dashed #abc9df;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #f9fcff, #eef6fc);
+      transition: border-color .18s, transform .18s, background .18s;
+    }
+    .dropzone.dragover { border-color: var(--blue); transform: translateY(-1px); background: #e8f4fd; }
+    .dropzone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .drop-hint { text-align: center; padding: 26px; pointer-events: none; }
+    .drop-icon { width: 54px; height: 54px; margin: 0 auto 12px; display: grid; place-items: center; border-radius: 16px; background: var(--blue-200); color: var(--navy); font-size: 26px; }
+    .drop-hint strong { display: block; color: var(--navy); }
+    .drop-hint span { display: block; margin-top: 6px; color: var(--muted); font-size: 12px; }
+    .image-preview { width: 100%; max-height: 390px; object-fit: contain; background: #f7fafc; }
+    .image-meta { margin-top: 10px; color: var(--muted); font-size: 12px; word-break: break-all; }
+
+    .button-row { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 14px; }
+    .btn {
+      min-height: 40px;
+      padding: 9px 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      border: 1px solid transparent;
+      border-radius: 11px;
+      font-weight: 800;
+      font-size: 13px;
+      transition: transform .15s, box-shadow .15s, background .15s;
+    }
+    .btn:hover:not(:disabled) { transform: translateY(-1px); }
+    .btn-primary { color: #fff; background: var(--navy); box-shadow: 0 6px 18px rgba(31,78,120,.18); }
+    .btn-blue { color: #fff; background: var(--blue); }
+    .btn-green { color: #fff; background: var(--green); box-shadow: 0 6px 18px rgba(35,129,94,.16); }
+    .btn-soft { color: var(--navy); background: var(--blue-100); border-color: #c8deef; }
+    .btn-danger { color: var(--red); background: var(--red-bg); border-color: #ffd1cb; }
+
+    .progress-box { margin-top: 14px; padding: 12px; border-radius: 12px; background: var(--blue-100); }
+    .progress-line { height: 8px; overflow: hidden; border-radius: 999px; background: #d6e5f0; }
+    .progress-bar { width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--blue), var(--green)); transition: width .2s; }
+    .progress-copy { margin-top: 7px; display: flex; justify-content: space-between; gap: 10px; color: var(--muted); font-size: 12px; }
+    .tip { margin-top: 12px; padding: 11px 12px; border-left: 3px solid #e1b742; border-radius: 8px; color: #705700; background: var(--amber-bg); font-size: 12px; line-height: 1.6; }
+
+    .stats { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .stat { padding: 13px 14px; border: 1px solid var(--line); border-radius: 13px; background: #fbfdff; }
+    .stat span { display: block; color: var(--muted); font-size: 11px; }
+    .stat strong { display: block; margin-top: 4px; color: var(--navy); font-size: 20px; }
+
+    .table-tools { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+    .table-tools .button-row { margin: 0; }
+    .table-note { color: var(--muted); font-size: 12px; }
+    .table-wrap { overflow: auto; border: 1px solid var(--line); border-radius: 14px; max-height: 660px; background: #fff; }
+    table { width: 100%; min-width: 1160px; border-collapse: separate; border-spacing: 0; font-size: 12px; }
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      padding: 11px 9px;
+      color: #fff;
+      background: var(--blue);
+      text-align: center;
+      white-space: nowrap;
+      border-right: 1px solid rgba(255,255,255,.28);
+    }
+    td { padding: 7px; border-bottom: 1px solid #e3edf5; background: #fff; vertical-align: middle; }
+    tbody tr:nth-child(odd) td { background: #f7fbfe; }
+    tbody tr.sick-row td { background: #fff4f1; }
+    .cell-input, .cell-select {
+      width: 100%;
+      height: 34px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 0 7px;
+      color: var(--ink);
+      background: transparent;
+      outline: none;
+    }
+    .cell-input:focus, .cell-select:focus { border-color: #9dc5e4; background: #fff; box-shadow: 0 0 0 2px rgba(91,155,213,.1); }
+    .number-cell { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .check-cell { text-align: center; }
+    .row-delete { width: 30px; height: 30px; border: 0; border-radius: 8px; color: var(--red); background: var(--red-bg); font-weight: 900; }
+    .empty-state { padding: 54px 20px; text-align: center; color: var(--muted); }
+    .empty-state strong { display: block; color: var(--navy); margin-bottom: 6px; }
+
+    .export-box {
+      padding: 18px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: center;
+      border: 1px solid #bfe3d4;
+      border-radius: 15px;
+      background: var(--green-bg);
+    }
+    .export-box h4 { margin: 0; color: #176344; }
+    .export-box p { margin: 5px 0 0; color: #46715f; font-size: 12px; line-height: 1.6; }
+    .export-actions { display: grid; gap: 8px; min-width: 184px; }
+    .download-ready { color: #176344; background: #fff; border-color: #8dcbb3; text-decoration: none; }
+    .online-status { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #c5cdd4; }
+    .status-dot.ready { background: #35a372; box-shadow: 0 0 0 4px rgba(53,163,114,.12); }
+    .status-dot.error { background: #d84a3a; box-shadow: 0 0 0 4px rgba(216,74,58,.12); }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: max(22px, env(safe-area-inset-bottom));
+      z-index: 90;
+      transform: translate(-50%, 18px);
+      max-width: min(560px, calc(100vw - 32px));
+      padding: 12px 16px;
+      border-radius: 12px;
+      color: #fff;
+      background: rgba(23,50,77,.96);
+      box-shadow: 0 14px 38px rgba(15,35,52,.26);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s, transform .2s;
+      font-size: 13px;
+      text-align: center;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .footer { margin-top: 22px; text-align: center; color: #7f93a4; font-size: 11px; }
+
+    @media (max-width: 980px) {
+      .hero, .workspace { grid-template-columns: 1fr; }
+      .flow-card { display: none; }
+      .stats { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+    }
+    @media (max-width: 640px) {
+      .topbar-inner, .page { padding-left: 14px; padding-right: 14px; }
+      .privacy-pill { display: none; }
+      .brand h1 { font-size: 15px; }
+      .hero-main { padding: 22px 20px; }
+      .form-grid { grid-template-columns: 1fr; }
+      .field.wide { grid-column: auto; }
+      .panel-body { padding: 15px; }
+      .panel-head { padding: 15px; }
+      .export-box { grid-template-columns: 1fr; }
+      .export-box .btn { width: 100%; }
+      .button-row .btn { flex: 1 1 auto; }
+      .stats { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">▦</div>
+        <div>
+          <h1>幼儿园食材用量识别工具</h1>
+          <p>菜谱图片识别 · 20人用量换算 · Excel生成</p>
+        </div>
+      </div>
+      <div class="privacy-pill">图片仅在当前浏览器内处理</div>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="hero">
+      <div class="hero-main">
+        <p class="eyebrow">Menu Image → Purchase Workbook</p>
+        <h2>插入菜谱图片，核对一次，直接生成采购 Excel</h2>
+        <p class="hero-copy">支持中文菜谱图片识别，自动提取“食材＋克数”，按学生人数换算为总克数和斤数。导出的工作簿保持原模板结构，并新增“原始图片”工作表。</p>
+        <div class="hero-tags">
+          <span class="hero-tag">无需API密钥</span>
+          <span class="hero-tag">学生人数可修改</span>
+          <span class="hero-tag">病号菜分开计算</span>
+          <span class="hero-tag">图片写入Excel</span>
+        </div>
+      </div>
+      <aside class="flow-card" aria-label="使用流程">
+        <h3>三步完成</h3>
+        <div class="flow-step"><div class="flow-index">1</div><div><strong>上传图片</strong><span>建议使用清晰、正向的JPG或PNG。</span></div></div>
+        <div class="flow-step"><div class="flow-index">2</div><div><strong>识别并核对</strong><span>OCR结果可逐行修改、增加和删除。</span></div></div>
+        <div class="flow-step"><div class="flow-index">3</div><div><strong>生成Excel</strong><span>自动汇总正常餐、病号菜和原始图片。</span></div></div>
+      </aside>
+    </section>
+
+    <section class="workspace">
+      <div class="stack">
+        <article class="panel">
+          <div class="panel-head">
+            <div class="panel-title"><span class="step-badge">1</span><div><h3>参数与菜谱图片</h3><p>黄色输入框会参与全部计算</p></div></div>
+            <span class="online-status"><span id="libraryDot" class="status-dot"></span><span id="libraryStatus">正在检查在线组件</span></span>
+          </div>
+          <div class="panel-body">
+            <div class="form-grid">
+              <div class="field"><label for="studentCount">学生人数</label><input id="studentCount" class="input parameter" type="number" min="1" max="5000" step="1" value="20"></div>
+              <div class="field"><label for="jinGrams">1斤等于多少克</label><input id="jinGrams" class="input parameter" type="number" min="1" step="1" value="500"></div>
+              <div class="field"><label for="weekStart">默认周一日期</label><input id="weekStart" class="input" type="date"></div>
+              <div class="field"><label for="smallMilk">托小班奶量（升/人）</label><input id="smallMilk" class="input" type="number" min="0" step="0.01" value="0.09"></div>
+              <div class="field"><label for="middleMilk">中班奶量（升/人）</label><input id="middleMilk" class="input" type="number" min="0" step="0.01" value="0.10"></div>
+              <div class="field"><label for="schoolName">学校名称（选填）</label><input id="schoolName" class="input" type="text" placeholder="幼儿园名称"></div>
+            </div>
+
+            <div id="dropzone" class="dropzone" style="margin-top:16px">
+              <input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp,image/*" aria-label="选择菜谱图片">
+              <div id="dropHint" class="drop-hint">
+                <div class="drop-icon">＋</div>
+                <strong>点击选择或拖入菜谱图片</strong>
+                <span>推荐JPG / PNG，文字越清晰识别越准确</span>
+              </div>
+              <img id="imagePreview" class="image-preview" alt="菜谱图片预览" hidden>
+            </div>
+            <div id="imageMeta" class="image-meta">尚未选择图片</div>
+            <div class="button-row">
+              <button id="recognizeBtn" class="btn btn-primary" type="button" disabled>识别图片文字</button>
+              <button id="removeImageBtn" class="btn btn-soft" type="button" disabled>移除图片</button>
+              <button id="sampleBtn" class="btn btn-soft" type="button">加载示例数据</button>
+            </div>
+            <div id="progressBox" class="progress-box" hidden>
+              <div class="progress-line"><div id="progressBar" class="progress-bar"></div></div>
+              <div class="progress-copy"><span id="progressStatus">准备识别</span><strong id="progressPercent">0%</strong></div>
+            </div>
+            <div class="tip">OCR识别会受到图片清晰度、表格线和字体影响。生成前请重点核对日期、食材名称及每人克数。</div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head">
+            <div class="panel-title"><span class="step-badge">2</span><div><h3>识别文字</h3><p>可直接修改文字后重新解析</p></div></div>
+          </div>
+          <div class="panel-body">
+            <textarea id="ocrText" class="textarea" placeholder="上传图片并识别后，文字会显示在这里。也可以直接粘贴菜谱文字。"></textarea>
+            <div class="button-row">
+              <button id="parseBtn" class="btn btn-blue" type="button">解析为食材表</button>
+              <button id="clearTextBtn" class="btn btn-soft" type="button">清空文字</button>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <article class="panel">
+        <div class="panel-head">
+          <div class="panel-title"><span class="step-badge">3</span><div><h3>核对食材并生成</h3><p>同日同食材在导出时自动合并</p></div></div>
+        </div>
+        <div class="panel-body">
+          <div class="stats">
+            <div class="stat"><span>当前明细</span><strong id="rowCount">0项</strong></div>
+            <div class="stat"><span>正常餐合计</span><strong id="normalTotal">0.000斤</strong></div>
+            <div class="stat"><span>病号菜合计</span><strong id="sickTotal">0.000斤</strong></div>
+            <div class="stat"><span>覆盖日期</span><strong id="dateCount">0天</strong></div>
+          </div>
+
+          <div class="table-tools">
+            <div class="button-row">
+              <button id="addRowBtn" class="btn btn-soft" type="button">＋ 添加一行</button>
+              <button id="mergeBtn" class="btn btn-soft" type="button">合并同日同食材</button>
+              <button id="clearRowsBtn" class="btn btn-danger" type="button">清空表格</button>
+            </div>
+            <div class="table-note">勾选“病号菜”后不会计入正常餐汇总</div>
+          </div>
+
+          <div class="table-wrap">
+            <table aria-label="食材用量明细">
+              <thead><tr><th style="width:126px">日期</th><th style="width:118px">餐次</th><th style="width:150px">食材</th><th style="width:110px">每人(g)</th><th style="width:108px">总量(g)</th><th style="width:105px">总量(斤)</th><th style="width:82px">病号菜</th><th style="width:260px">来源/说明</th><th style="width:54px">删除</th></tr></thead>
+              <tbody id="ingredientBody"></tbody>
+            </table>
+            <div id="emptyState" class="empty-state"><strong>还没有食材数据</strong>上传菜谱图片识别，或点击“加载示例数据”。</div>
+          </div>
+
+          <div class="export-box" style="margin-top:16px">
+            <div>
+              <h4>生成同结构 Excel 工作簿</h4>
+              <p>包含“每日汇总、食材明细、病号菜、原始图片”四张工作表。图片会随Excel一起保存。</p>
+            </div>
+            <div class="export-actions">
+              <button id="exportBtn" class="btn btn-green" type="button" disabled>生成并下载 Excel</button>
+              <a id="downloadLink" class="btn download-ready" href="#" download hidden>Excel已生成，点击下载</a>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <div class="footer">图片和数据不会上传到本工具的服务器；在线连接仅用于加载识别和Excel组件。</div>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const $ = (id) => document.getElementById(id);
+      const mealOptions = ["早餐", "午餐主食", "午餐菜", "午餐汤", "搭配", "水果", "午点", "病号菜", "未分类"];
+      const mealOrder = Object.fromEntries(mealOptions.map((v, i) => [v, i]));
+      const state = {
+        rows: [],
+        uploadedFile: null,
+        previewUrl: "",
+        imageDataUrl: "",
+        imageWidth: 0,
+        imageHeight: 0,
+        downloadUrl: "",
+        nextId: 1,
+        recognizing: false,
+      };
+
+      const sampleRows = [
+        ["2026-08-24", "早餐", "奶粉", 15, "早餐奶粉", false],
+        ["2026-08-24", "早餐", "香酥条", 4, "早餐点心", false],
+        ["2026-08-24", "早餐", "苏打饼干", 3, "早餐点心", false],
+        ["2026-08-24", "午餐主食", "荞麦", 5, "荞麦饭", false],
+        ["2026-08-24", "午餐主食", "大米", 40, "荞麦饭", false],
+        ["2026-08-24", "午餐菜", "夹心肉", 10, "肉糜蒸蛋", false],
+        ["2026-08-24", "午餐菜", "鸡蛋", 40, "肉糜蒸蛋", false],
+        ["2026-08-24", "午餐菜", "韭菜", 60, "韭菜银芽", false],
+        ["2026-08-24", "午餐菜", "银芽", 10, "韭菜银芽", false],
+        ["2026-08-24", "午餐汤", "香菜", 0.1, "香菜萝卜牛尾汤", false],
+        ["2026-08-24", "午餐汤", "白萝卜", 10, "香菜萝卜牛尾汤", false],
+        ["2026-08-24", "午餐汤", "牛尾", 10, "香菜萝卜牛尾汤", false],
+        ["2026-08-24", "水果", "红提", 50, "水果", false],
+        ["2026-08-24", "午点", "鸡毛菜", 10, "鸡毛菜片儿汤", false],
+        ["2026-08-24", "午点", "大馄饨皮", 10, "鸡毛菜片儿汤", false],
+        ["2026-08-24", "午点", "小白干", 10, "盐水小白干", false],
+        ["2026-08-24", "病号菜", "清蒸肉丸", 50, "原表仅给出菜品50g", true],
+        ["2026-08-31", "早餐", "奶粉", 15, "早餐奶粉", false],
+        ["2026-08-31", "早餐", "香酥条", 4, "早餐点心", false],
+        ["2026-08-31", "早餐", "苏打饼干", 3, "早餐点心", false],
+        ["2026-08-31", "午餐主食", "小米", 5, "小米饭", false],
+        ["2026-08-31", "午餐主食", "大米", 40, "小米饭", false],
+        ["2026-08-31", "午餐菜", "黄瓜", 15, "杂蔬炖蛋", false],
+        ["2026-08-31", "午餐菜", "胡萝卜", 15, "杂蔬炖蛋", false],
+        ["2026-08-31", "午餐菜", "鸡蛋", 40, "杂蔬炖蛋", false],
+        ["2026-08-31", "午餐菜", "莴笋", 60, "莴笋炒杏鲍菇", false],
+        ["2026-08-31", "午餐菜", "杏鲍菇", 5, "莴笋炒杏鲍菇", false],
+        ["2026-08-31", "午餐汤", "花菜", 5, "花菜肉片荠菜羹", false],
+        ["2026-08-31", "午餐汤", "肉片", 5, "花菜肉片荠菜羹", false],
+        ["2026-08-31", "午餐汤", "荠菜", 5, "花菜肉片荠菜羹", false],
+        ["2026-08-31", "水果", "红提", 50, "水果", false],
+        ["2026-08-31", "午点", "绿豆", 5, "绿豆百合粥", false],
+        ["2026-08-31", "午点", "百合", 5, "绿豆百合粥", false],
+        ["2026-08-31", "午点", "大米", 10, "绿豆百合粥", false],
+        ["2026-08-31", "午点", "玉米", 15, "蒸汽玉米", false],
+        ["2026-08-31", "病号菜", "肉糜", 40, "清蒸肉丸", true],
+      ];
+
+      function getMonday(date = new Date()) {
+        const d = new Date(date);
+        const day = d.getDay() || 7;
+        d.setHours(0, 0, 0, 0);
+        d.setDate(d.getDate() - day + 1);
+        return formatDate(d);
+      }
+
+      function formatDate(date) {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, "0");
+        const d = String(date.getDate()).padStart(2, "0");
+        return `${y}-${m}-${d}`;
+      }
+
+      function validIsoDate(value) {
+        return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(`${value}T00:00:00`).getTime());
+      }
+
+      function makeIsoDate(year, month, day) {
+        const date = new Date(year, month - 1, day);
+        if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return "";
+        return formatDate(date);
+      }
+
+      function dateIsNear(candidate, anchor, maxDays = 14) {
+        if (!validIsoDate(candidate) || !validIsoDate(anchor)) return false;
+        const gap = Math.abs(new Date(`${candidate}T00:00:00`) - new Date(`${anchor}T00:00:00`));
+        return gap / 86400000 <= maxDays;
+      }
+
+      function weekdayName(isoDate) {
+        if (!validIsoDate(isoDate)) return "";
+        return ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][new Date(`${isoDate}T00:00:00`).getDay()];
+      }
+
+      function newRow({ date, meal = "未分类", ingredient = "", grams = 0, source = "", sick = false }) {
+        return { id: state.nextId++, date: validIsoDate(date) ? date : $("weekStart").value, meal, ingredient, grams: Number(grams) || 0, source, sick: Boolean(sick) };
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "").replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]);
+      }
+
+      function studentCount() { return Math.max(1, Number($("studentCount").value) || 20); }
+      function jinGrams() { return Math.max(1, Number($("jinGrams").value) || 500); }
+      function totalGrams(row) { return row.grams * studentCount(); }
+      function totalJin(row) { return totalGrams(row) / jinGrams(); }
+
+      function showToast(message) {
+        const toast = $("toast");
+        toast.textContent = message;
+        toast.classList.add("show");
+        clearTimeout(showToast.timer);
+        showToast.timer = setTimeout(() => toast.classList.remove("show"), 2800);
+      }
+
+      function renderRows() {
+        const body = $("ingredientBody");
+        body.innerHTML = state.rows.map((row) => {
+          const options = mealOptions.map((meal) => `<option value="${meal}"${row.meal === meal ? " selected" : ""}>${meal}</option>`).join("");
+          return `<tr data-id="${row.id}" class="${row.sick ? "sick-row" : ""}">
+            <td><input class="cell-input" data-key="date" type="date" value="${escapeHtml(row.date)}"></td>
+            <td><select class="cell-select" data-key="meal">${options}</select></td>
+            <td><input class="cell-input" data-key="ingredient" type="text" value="${escapeHtml(row.ingredient)}" placeholder="食材名称"></td>
+            <td><input class="cell-input number-cell" data-key="grams" type="number" min="0" step="0.1" value="${Number(row.grams)}"></td>
+            <td class="number-cell" data-total-g>${totalGrams(row).toFixed(1)}</td>
+            <td class="number-cell" data-total-jin>${totalJin(row).toFixed(3)}</td>
+            <td class="check-cell"><input data-key="sick" type="checkbox" ${row.sick ? "checked" : ""} aria-label="标记为病号菜"></td>
+            <td><input class="cell-input" data-key="source" type="text" value="${escapeHtml(row.source)}" placeholder="菜品或识别原文"></td>
+            <td class="check-cell"><button class="row-delete" type="button" data-delete aria-label="删除这一行">×</button></td>
+          </tr>`;
+        }).join("");
+        $("emptyState").hidden = state.rows.length > 0;
+        $("exportBtn").disabled = state.rows.length === 0;
+        updateStats();
+      }
+
+      function updateComputedCells() {
+        document.querySelectorAll("#ingredientBody tr[data-id]").forEach((tr) => {
+          const row = state.rows.find((r) => r.id === Number(tr.dataset.id));
+          if (!row) return;
+          tr.querySelector("[data-total-g]").textContent = totalGrams(row).toFixed(1);
+          tr.querySelector("[data-total-jin]").textContent = totalJin(row).toFixed(3);
+        });
+        updateStats();
+      }
+
+      function updateStats() {
+        const normal = state.rows.filter((row) => !row.sick).reduce((sum, row) => sum + totalJin(row), 0);
+        const sick = state.rows.filter((row) => row.sick).reduce((sum, row) => sum + totalJin(row), 0);
+        const dates = new Set(state.rows.map((row) => row.date).filter(validIsoDate));
+        $("rowCount").textContent = `${state.rows.length}项`;
+        $("normalTotal").textContent = `${normal.toFixed(3)}斤`;
+        $("sickTotal").textContent = `${sick.toFixed(3)}斤`;
+        $("dateCount").textContent = `${dates.size}天`;
+      }
+
+      function normalizeOcrText(text) {
+        const fullWidthDigits = "０１２３４５６７８９";
+        let normalized = String(text || "").replace(/[０-９]/g, (d) => String(fullWidthDigits.indexOf(d)));
+        normalized = normalized.replace(/ｇ/gi, "g").replace(/克/g, "g").replace(/[﹙〔【]/g, "（").replace(/[﹚〕】]/g, "）");
+        normalized = normalized.replace(/\b[lI]\s*g?8\b/gi, "1g");
+        normalized = normalized.replace(/(\d{1,3})\s*[sS](?=\s|[、，,；;）〉》]|$)/g, "$1g");
+        normalized = normalized.replace(/(\d{1,3})\s*8(?=\s|[、，,；;）〉》]|$)/g, (all, digits) => Number(digits) <= 200 ? `${digits}g` : all);
+        for (let i = 0; i < 3; i++) normalized = normalized.replace(/([\u3400-\u9fff])\s+(?=[\u3400-\u9fff])/g, "$1");
+        return normalized;
+      }
+
+      function cleanIngredientName(name) {
+        let clean = String(name || "").replace(/[\s:：,，、;；（）()]/g, "").replace(/^(约|大约|每人|左右)+/, "");
+        clean = clean.replace(/(每人|左右|约)$/g, "");
+        if (!clean || clean.length > 20) return "";
+        if (/^(人|克|份|第|周|星期|日期|时间|总量|用量|学生|托小班|中班)$/.test(clean)) return "";
+        if (/^[A-Za-z·]+$/.test(clean)) return "";
+        if (/\d/.test(clean)) return "";
+        return clean;
+      }
+
+      function guessMeal(name, line) {
+        const text = `${name}${line}`;
+        if (/病号|清蒸肉丸/.test(text)) return { meal: "病号菜", sick: true };
+        if (/奶粉|饼干|曲奇|香酥条|早餐/.test(text)) return { meal: "早餐", sick: false };
+        if (/红提|青提|番茄|香蕉|芭蕉|水果/.test(text)) return { meal: "水果", sick: false };
+        if (/粥|发糕|刀切|核桃露|烤麸|芋艿|午点|玉米/.test(text)) return { meal: "午点", sick: false };
+        if (/汤|羹/.test(text)) return { meal: "午餐汤", sick: false };
+        if (/饭|面条|主食|荞麦|大米|小米/.test(text)) return { meal: "午餐主食", sick: false };
+        return { meal: "午餐菜", sick: false };
+      }
+
+      function parseOcrText() {
+        const raw = normalizeOcrText($("ocrText").value);
+        if (!raw.trim()) {
+          showToast("请先识别图片或粘贴菜谱文字");
+          return;
+        }
+        const lines = raw.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+        const fallback = validIsoDate($("weekStart").value) ? $("weekStart").value : getMonday();
+        const fallbackYear = Number(fallback.slice(0, 4));
+        const monday = new Date(`${fallback}T00:00:00`);
+        const weekdayOffsets = { "一": 0, "二": 1, "三": 2, "四": 3, "五": 4, "六": 5, "日": 6, "天": 6 };
+        let currentDate = fallback;
+        const extracted = [];
+
+        const addCandidate = (name, grams, line) => {
+          const ingredient = cleanIngredientName(name);
+          const amount = Number(grams);
+          if (!ingredient || !Number.isFinite(amount) || amount <= 0 || amount > 2000) return;
+          const guess = guessMeal(ingredient, line);
+          extracted.push(newRow({ date: currentDate, meal: guess.meal, ingredient, grams: amount, source: line.slice(0, 80), sick: guess.sick }));
+        };
+
+        for (const line of lines) {
+          const fullDate = line.match(/(20\d{2})\s*[年\/\.\-]\s*(\d{1,2})\s*[月\/\.\-]\s*(\d{1,2})/);
+          const shortDate = line.match(/(?:^|\D)(\d{1,2})\s*[\/\.\-]\s*(\d{1,2})(?:\D|$)/);
+          if (fullDate) {
+            const candidate = makeIsoDate(Number(fullDate[1]), Number(fullDate[2]), Number(fullDate[3]));
+            if (candidate && dateIsNear(candidate, fallback)) currentDate = candidate;
+          } else if (shortDate) {
+            const candidate = makeIsoDate(fallbackYear, Number(shortDate[1]), Number(shortDate[2]));
+            if (candidate && dateIsNear(candidate, fallback)) currentDate = candidate;
+          }
+          else {
+            const weekMatch = line.match(/(?:周|星期)([一二三四五六日天])/);
+            if (weekMatch) {
+              const d = new Date(monday);
+              d.setDate(d.getDate() + weekdayOffsets[weekMatch[1]]);
+              currentDate = formatDate(d);
+            }
+          }
+
+          const seenInLine = new Set();
+          const wholePattern = /(?:^|[\s，、；;])([\u3400-\u9fffA-Za-z·]{1,18})[（(]\s*(\d+(?:\.\d+)?)\s*g(?:\s*\/\s*人)?\s*[）)]/gi;
+          for (const match of line.matchAll(wholePattern)) {
+            const key = `${match[1]}|${match[2]}`;
+            if (!seenInLine.has(key)) { seenInLine.add(key); addCandidate(match[1], match[2], line); }
+          }
+          const componentPattern = /(?:^|[（(、，,；;：:\s])([\u3400-\u9fffA-Za-z·]{1,16})\s*(\d+(?:\.\d+)?)\s*g/gi;
+          for (const match of line.matchAll(componentPattern)) {
+            const key = `${match[1]}|${match[2]}`;
+            if (!seenInLine.has(key)) { seenInLine.add(key); addCandidate(match[1], match[2], line); }
+          }
+        }
+
+        if (!extracted.length) {
+          showToast("未自动提取到“食材＋克数”，请修改识别文字或手动添加行");
+          return;
+        }
+        state.rows = mergeDuplicateRows(extracted);
+        renderRows();
+        document.querySelector(".table-wrap").scrollIntoView({ behavior: "smooth", block: "start" });
+        showToast(`已解析 ${state.rows.length} 项，请核对后生成Excel`);
+      }
+
+      function mergeDuplicateRows(inputRows = state.rows) {
+        const map = new Map();
+        for (const row of inputRows) {
+          const ingredient = String(row.ingredient || "").trim();
+          if (!ingredient) continue;
+          const key = `${row.date}|${row.sick ? 1 : 0}|${ingredient}`;
+          if (!map.has(key)) {
+            map.set(key, newRow({ ...row, ingredient, source: row.source || "" }));
+          } else {
+            const current = map.get(key);
+            current.grams += Number(row.grams) || 0;
+            const meals = new Set(String(current.meal).split("+").concat(String(row.meal).split("+")));
+            current.meal = [...meals].sort((a, b) => (mealOrder[a] ?? 99) - (mealOrder[b] ?? 99)).join("+");
+            if (row.source && !current.source.includes(row.source)) current.source = `${current.source}；${row.source}`.replace(/^；/, "").slice(0, 180);
+          }
+        }
+        return [...map.values()].sort((a, b) => a.date.localeCompare(b.date) || (mealOrder[a.meal] ?? 99) - (mealOrder[b.meal] ?? 99) || a.ingredient.localeCompare(b.ingredient, "zh-CN"));
+      }
+
+      function readAsDataUrl(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
+
+      function loadImage(src) {
+        return new Promise((resolve, reject) => {
+          const image = new Image();
+          image.onload = () => resolve(image);
+          image.onerror = reject;
+          image.src = src;
+        });
+      }
+
+      async function prepareImageForExcel(dataUrl) {
+        const image = await loadImage(dataUrl);
+        const maxSide = 1800;
+        const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+        const width = Math.max(1, Math.round(image.naturalWidth * scale));
+        const height = Math.max(1, Math.round(image.naturalHeight * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext("2d");
+        context.fillStyle = "#ffffff";
+        context.fillRect(0, 0, width, height);
+        context.drawImage(image, 0, 0, width, height);
+        return { dataUrl: canvas.toDataURL("image/jpeg", .9), width, height };
+      }
+
+      async function prepareImageForOcr() {
+        const image = await loadImage(state.previewUrl || state.imageDataUrl);
+        const scale = Math.min(2, 3000 / Math.max(image.naturalWidth, image.naturalHeight));
+        const width = Math.max(1, Math.round(image.naturalWidth * scale));
+        const height = Math.max(1, Math.round(image.naturalHeight * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext("2d", { willReadFrequently: true });
+        context.fillStyle = "#ffffff";
+        context.fillRect(0, 0, width, height);
+        context.drawImage(image, 0, 0, width, height);
+        const pixels = context.getImageData(0, 0, width, height);
+        for (let i = 0; i < pixels.data.length; i += 4) {
+          const gray = pixels.data[i] * .299 + pixels.data[i + 1] * .587 + pixels.data[i + 2] * .114;
+          const value = gray > 218 ? 255 : Math.max(0, Math.min(255, (gray - 128) * 1.65 + 128));
+          pixels.data[i] = value;
+          pixels.data[i + 1] = value;
+          pixels.data[i + 2] = value;
+        }
+        context.putImageData(pixels, 0, 0);
+        return canvas.toDataURL("image/png");
+      }
+
+      async function handleImage(file) {
+        if (!file || !file.type.startsWith("image/")) {
+          showToast("请选择JPG、PNG或浏览器支持的图片文件");
+          return;
+        }
+        if (file.size > 20 * 1024 * 1024) {
+          showToast("图片超过20MB，请先压缩后再上传");
+          return;
+        }
+        try {
+          const dataUrl = await readAsDataUrl(file);
+          const prepared = await prepareImageForExcel(dataUrl);
+          if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
+          state.uploadedFile = file;
+          state.previewUrl = URL.createObjectURL(file);
+          state.imageDataUrl = prepared.dataUrl;
+          state.imageWidth = prepared.width;
+          state.imageHeight = prepared.height;
+          $("imagePreview").src = state.previewUrl;
+          $("imagePreview").hidden = false;
+          $("dropHint").hidden = true;
+          $("imageMeta").textContent = `${file.name} · ${(file.size / 1024 / 1024).toFixed(2)}MB · ${prepared.width}×${prepared.height}px`;
+          $("recognizeBtn").disabled = false;
+          $("removeImageBtn").disabled = false;
+          showToast("图片已插入，可以开始识别");
+        } catch (error) {
+          console.error(error);
+          showToast("无法读取该图片，建议转换为JPG或PNG");
+        }
+      }
+
+      function removeImage() {
+        if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
+        state.uploadedFile = null;
+        state.previewUrl = "";
+        state.imageDataUrl = "";
+        state.imageWidth = 0;
+        state.imageHeight = 0;
+        $("imageInput").value = "";
+        $("imagePreview").src = "";
+        $("imagePreview").hidden = true;
+        $("dropHint").hidden = false;
+        $("imageMeta").textContent = "尚未选择图片";
+        $("recognizeBtn").disabled = true;
+        $("removeImageBtn").disabled = true;
+      }
+
+      function progressLabel(status) {
+        const labels = {
+          "loading tesseract core": "加载识别核心",
+          "initializing tesseract": "初始化识别器",
+          "loading language traineddata": "下载中文识别模型",
+          "initializing api": "准备中文识别",
+          "recognizing text": "正在识别文字",
+        };
+        return labels[status] || status || "正在处理";
+      }
+
+      async function recognizeImage() {
+        if (!state.uploadedFile || state.recognizing) return;
+        if (!window.Tesseract) {
+          showToast("识别组件尚未加载，请检查网络后刷新页面");
+          return;
+        }
+        state.recognizing = true;
+        $("recognizeBtn").disabled = true;
+        $("progressBox").hidden = false;
+        $("progressBar").style.width = "0%";
+        $("progressPercent").textContent = "0%";
+        try {
+          $("progressStatus").textContent = "优化图片清晰度";
+          const ocrImage = await prepareImageForOcr();
+          const result = await Tesseract.recognize(ocrImage, "chi_sim+eng", {
+            langPath: "https://tessdata.projectnaptha.com/4.0.0",
+            logger: (message) => {
+              const progress = Math.round((message.progress || 0) * 100);
+              $("progressBar").style.width = `${progress}%`;
+              $("progressPercent").textContent = `${progress}%`;
+              $("progressStatus").textContent = progressLabel(message.status);
+            },
+          });
+          $("ocrText").value = result.data.text || "";
+          $("progressBar").style.width = "100%";
+          $("progressPercent").textContent = "100%";
+          $("progressStatus").textContent = "识别完成";
+          parseOcrText();
+        } catch (error) {
+          console.error(error);
+          $("progressStatus").textContent = "识别失败";
+          showToast("图片识别失败，请检查网络，或在文字框中手动粘贴内容");
+        } finally {
+          state.recognizing = false;
+          $("recognizeBtn").disabled = !state.uploadedFile;
+        }
+      }
+
+      function argb(hex) { return `FF${hex.replace("#", "").toUpperCase()}`; }
+      const colors = { navy: argb("1F4E78"), blue: argb("5B9BD5"), pale: argb("EAF2F8"), line: argb("D9E2F3"), yellow: argb("FFF2CC"), green: argb("D9EAD3"), peach: argb("FCE4D6"), white: "FFFFFFFF", ink: argb("17324D") };
+      const thinBorder = { top: { style: "thin", color: { argb: colors.line } }, left: { style: "thin", color: { argb: colors.line } }, bottom: { style: "thin", color: { argb: colors.line } }, right: { style: "thin", color: { argb: colors.line } } };
+
+      function styleTitle(ws, endColumn, text) {
+        ws.mergeCells(`A1:${endColumn}1`);
+        const cell = ws.getCell("A1");
+        cell.value = text;
+        cell.font = { name: "Microsoft YaHei", size: 18, bold: true, color: { argb: colors.white } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: colors.navy } };
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+        ws.getRow(1).height = 32;
+      }
+
+      function styleHeader(row) {
+        row.height = 24;
+        row.eachCell((cell) => {
+          cell.font = { name: "Microsoft YaHei", bold: true, color: { argb: colors.white } };
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: colors.blue } };
+          cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+          cell.border = thinBorder;
+        });
+      }
+
+      function styleNote(ws, range, text, fill = colors.pale, color = colors.navy) {
+        ws.mergeCells(range);
+        const cell = ws.getCell(range.split(":")[0]);
+        cell.value = text;
+        cell.font = { name: "Microsoft YaHei", italic: true, color: { argb: color } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: fill } };
+        cell.alignment = { vertical: "middle", wrapText: true };
+      }
+
+      function styleBody(ws, startRow, endRow, endColumn) {
+        for (let rowIndex = startRow; rowIndex <= endRow; rowIndex++) {
+          const row = ws.getRow(rowIndex);
+          row.height = 22;
+          row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+            cell.font = { name: "Microsoft YaHei", size: 10, color: { argb: colors.ink } };
+            cell.alignment = { vertical: "middle", horizontal: colNumber >= 5 && colNumber <= 8 ? "right" : "left", wrapText: colNumber === endColumn };
+            cell.border = thinBorder;
+            if ((rowIndex - startRow) % 2 === 0) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: argb("F4FAFE") } };
+          });
+        }
+      }
+
+      function aggregatedForExport() {
+        return mergeDuplicateRows(state.rows).filter((row) => row.ingredient && row.grams > 0 && validIsoDate(row.date));
+      }
+
+      async function exportWorkbook() {
+        if (!window.ExcelJS) {
+          showToast("Excel组件尚未加载，请检查网络后刷新页面");
+          return;
+        }
+        const exportRows = aggregatedForExport();
+        const normalRows = exportRows.filter((row) => !row.sick);
+        const sickRows = exportRows.filter((row) => row.sick);
+        if (!normalRows.length) {
+          showToast("至少需要一条正常餐食材数据");
+          return;
+        }
+        $("exportBtn").disabled = true;
+        $("exportBtn").textContent = "正在生成…";
+        try {
+          const students = studentCount();
+          const oneJin = jinGrams();
+          const smallMilk = Math.max(0, Number($("smallMilk").value) || 0);
+          const middleMilk = Math.max(0, Number($("middleMilk").value) || 0);
+          const schoolName = $("schoolName").value.trim();
+          const workbook = new ExcelJS.Workbook();
+          workbook.creator = "Oliver XUC";
+          workbook.created = new Date();
+          workbook.modified = new Date();
+          workbook.calcProperties.fullCalcOnLoad = true;
+          workbook.calcProperties.forceFullCalc = true;
+
+          const summary = workbook.addWorksheet("每日汇总", { views: [{ showGridLines: false, state: "frozen", ySplit: 6 }] });
+          const detail = workbook.addWorksheet("食材明细", { views: [{ showGridLines: false, state: "frozen", ySplit: 5 }] });
+          const sick = workbook.addWorksheet("病号菜", { views: [{ showGridLines: false, state: "frozen", ySplit: 5 }] });
+          const imageSheet = workbook.addWorksheet("原始图片", { views: [{ showGridLines: false }] });
+
+          const titlePrefix = schoolName ? `${schoolName}｜` : "";
+          styleTitle(summary, "H", `${titlePrefix}每周食材采购汇总（${students}名学生）`);
+          summary.getRow(3).values = ["学生人数", students, "1斤克数", oneJin, "托小班每人奶量(L)", smallMilk, "中班每人奶量(L)", middleMilk];
+          for (const col of [1, 3, 5, 7]) {
+            const cell = summary.getRow(3).getCell(col);
+            cell.font = { name: "Microsoft YaHei", bold: true, color: { argb: colors.navy } };
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: argb("D9EAF7") } };
+            cell.alignment = { horizontal: "center", vertical: "middle" };
+          }
+          for (const col of [2, 4, 6, 8]) {
+            const cell = summary.getRow(3).getCell(col);
+            cell.font = { name: "Microsoft YaHei", bold: true, color: { argb: argb("7F6000") } };
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: colors.yellow } };
+            cell.alignment = { horizontal: "center", vertical: "middle" };
+            cell.border = thinBorder;
+          }
+          summary.getRow(3).height = 27;
+          styleNote(summary, "A4:H4", "黄色单元格可修改；正常餐斤数不含液体奶、清水、未标克数调味料及病号菜。");
+          summary.getRow(4).height = 26;
+          summary.getRow(6).values = ["日期", "星期", "食材项数", `${students}人总量(g)`, "合计(斤)", "托小班奶量(L)", "中班奶量(L)", "备注"];
+          styleHeader(summary.getRow(6));
+
+          const byDate = new Map();
+          for (const row of normalRows) {
+            if (!byDate.has(row.date)) byDate.set(row.date, []);
+            byDate.get(row.date).push(row);
+          }
+          const dateEntries = [...byDate.entries()].sort(([a], [b]) => a.localeCompare(b));
+          const detailStart = 6;
+          const detailEnd = detailStart + normalRows.length - 1;
+          dateEntries.forEach(([date, items], index) => {
+            const excelRow = 7 + index;
+            const totalG = items.reduce((sum, item) => sum + item.grams * students, 0);
+            summary.getCell(`A${excelRow}`).value = new Date(`${date}T00:00:00`);
+            summary.getCell(`A${excelRow}`).numFmt = "yyyy-mm-dd";
+            summary.getCell(`B${excelRow}`).value = weekdayName(date);
+            summary.getCell(`C${excelRow}`).value = { formula: `COUNTIF('食材明细'!$A$${detailStart}:$A$${detailEnd},A${excelRow})`, result: items.length };
+            summary.getCell(`D${excelRow}`).value = { formula: `SUMIF('食材明细'!$A$${detailStart}:$A$${detailEnd},A${excelRow},'食材明细'!$G$${detailStart}:$G$${detailEnd})`, result: totalG };
+            summary.getCell(`E${excelRow}`).value = { formula: `D${excelRow}/$D$3`, result: totalG / oneJin };
+            summary.getCell(`F${excelRow}`).value = { formula: `$B$3*$F$3`, result: students * smallMilk };
+            summary.getCell(`G${excelRow}`).value = { formula: `$B$3*$H$3`, result: students * middleMilk };
+            summary.getCell(`H${excelRow}`).value = "正常餐；不含病号菜";
+          });
+          const firstSummaryRow = 7;
+          const lastSummaryRow = 6 + dateEntries.length;
+          styleBody(summary, firstSummaryRow, lastSummaryRow, 8);
+          summary.getColumn(1).numFmt = "yyyy-mm-dd";
+          summary.getColumn(3).numFmt = "0";
+          summary.getColumn(4).numFmt = "0.0";
+          summary.getColumn(5).numFmt = "0.000";
+          summary.getColumn(6).numFmt = "0.00";
+          summary.getColumn(7).numFmt = "0.00";
+          const totalRow = lastSummaryRow + 1;
+          const totalGAll = normalRows.reduce((sum, row) => sum + row.grams * students, 0);
+          summary.getCell(`A${totalRow}`).value = "全部日期合计";
+          summary.getCell(`C${totalRow}`).value = { formula: `SUM(C${firstSummaryRow}:C${lastSummaryRow})`, result: normalRows.length };
+          summary.getCell(`D${totalRow}`).value = { formula: `SUM(D${firstSummaryRow}:D${lastSummaryRow})`, result: totalGAll };
+          summary.getCell(`E${totalRow}`).value = { formula: `SUM(E${firstSummaryRow}:E${lastSummaryRow})`, result: totalGAll / oneJin };
+          summary.getCell(`F${totalRow}`).value = { formula: `SUM(F${firstSummaryRow}:F${lastSummaryRow})`, result: dateEntries.length * students * smallMilk };
+          summary.getCell(`G${totalRow}`).value = { formula: `SUM(G${firstSummaryRow}:G${lastSummaryRow})`, result: dateEntries.length * students * middleMilk };
+          summary.getRow(totalRow).eachCell({ includeEmpty: true }, (cell) => {
+            cell.font = { name: "Microsoft YaHei", bold: true, color: { argb: argb("274E13") } };
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: colors.green } };
+            cell.border = thinBorder;
+          });
+          summary.columns = [{ width: 15 }, { width: 10 }, { width: 13 }, { width: 17 }, { width: 15 }, { width: 18 }, { width: 18 }, { width: 28 }];
+          summary.autoFilter = { from: "A6", to: `H${lastSummaryRow}` };
+
+          styleTitle(detail, "I", "每日食材明细与学生人数换算");
+          styleNote(detail, "A3:I3", "计算公式：总量(g)=每人用量(g)×学生人数；总量(斤)=总量(g)÷1斤克数。学生人数引用“每日汇总”黄色输入格。");
+          styleNote(detail, "A4:I4", "导出前已自动合并同一天的同名食材；餐次和来源说明会合并保留。");
+          detail.getRow(5).values = ["日期", "星期", "餐次", "食材", "每人用量(g)", "学生人数", "总量(g)", "总量(斤)", "菜品/来源说明"];
+          styleHeader(detail.getRow(5));
+          normalRows.forEach((row, index) => {
+            const excelRow = 6 + index;
+            detail.getCell(`A${excelRow}`).value = new Date(`${row.date}T00:00:00`);
+            detail.getCell(`A${excelRow}`).numFmt = "yyyy-mm-dd";
+            detail.getCell(`B${excelRow}`).value = weekdayName(row.date);
+            detail.getCell(`C${excelRow}`).value = row.meal;
+            detail.getCell(`D${excelRow}`).value = row.ingredient;
+            detail.getCell(`E${excelRow}`).value = row.grams;
+            detail.getCell(`F${excelRow}`).value = { formula: `'每日汇总'!$B$3`, result: students };
+            detail.getCell(`G${excelRow}`).value = { formula: `E${excelRow}*F${excelRow}`, result: row.grams * students };
+            detail.getCell(`H${excelRow}`).value = { formula: `G${excelRow}/'每日汇总'!$D$3`, result: row.grams * students / oneJin };
+            detail.getCell(`I${excelRow}`).value = row.source;
+          });
+          styleBody(detail, 6, detailEnd, 9);
+          detail.getColumn(1).numFmt = "yyyy-mm-dd";
+          detail.getColumn(5).numFmt = "0.0";
+          detail.getColumn(6).numFmt = "0";
+          detail.getColumn(7).numFmt = "0.0";
+          detail.getColumn(8).numFmt = "0.000";
+          detail.columns = [{ width: 15 }, { width: 9 }, { width: 15 }, { width: 22 }, { width: 16 }, { width: 13 }, { width: 16 }, { width: 16 }, { width: 38 }];
+          detail.autoFilter = { from: "A5", to: `I${detailEnd}` };
+
+          styleTitle(sick, "H", "病号菜理论用量（不计入正常餐）");
+          styleNote(sick, "A3:H3", "以下按设定学生人数进行理论换算；实际采购请按当天病号人数调整。", colors.peach, argb("9C0006"));
+          sick.getRow(5).values = ["日期", "菜品/食材", "每人用量(g)", "理论人数", "总量(g)", "总量(斤)", "计入正常餐", "说明"];
+          styleHeader(sick.getRow(5));
+          if (sickRows.length) {
+            sickRows.forEach((row, index) => {
+              const excelRow = 6 + index;
+              sick.getCell(`A${excelRow}`).value = new Date(`${row.date}T00:00:00`);
+              sick.getCell(`A${excelRow}`).numFmt = "yyyy-mm-dd";
+              sick.getCell(`B${excelRow}`).value = row.ingredient;
+              sick.getCell(`C${excelRow}`).value = row.grams;
+              sick.getCell(`D${excelRow}`).value = { formula: `'每日汇总'!$B$3`, result: students };
+              sick.getCell(`E${excelRow}`).value = { formula: `C${excelRow}*D${excelRow}`, result: row.grams * students };
+              sick.getCell(`F${excelRow}`).value = { formula: `E${excelRow}/'每日汇总'!$D$3`, result: row.grams * students / oneJin };
+              sick.getCell(`G${excelRow}`).value = "否";
+              sick.getCell(`H${excelRow}`).value = row.source;
+            });
+            styleBody(sick, 6, 5 + sickRows.length, 8);
+            sick.autoFilter = { from: "A5", to: `H${5 + sickRows.length}` };
+          } else {
+            sick.mergeCells("A6:H6");
+            sick.getCell("A6").value = "本次没有标记病号菜";
+            sick.getCell("A6").alignment = { horizontal: "center", vertical: "middle" };
+            sick.getCell("A6").font = { name: "Microsoft YaHei", color: { argb: colors.navy } };
+          }
+          sick.getColumn(1).numFmt = "yyyy-mm-dd";
+          sick.getColumn(3).numFmt = "0.0";
+          sick.getColumn(4).numFmt = "0";
+          sick.getColumn(5).numFmt = "0.0";
+          sick.getColumn(6).numFmt = "0.000";
+          sick.columns = [{ width: 15 }, { width: 23 }, { width: 16 }, { width: 14 }, { width: 16 }, { width: 15 }, { width: 15 }, { width: 40 }];
+
+          styleTitle(imageSheet, "H", "原始菜谱图片");
+          imageSheet.columns = [{ width: 16 }, { width: 16 }, { width: 16 }, { width: 16 }, { width: 16 }, { width: 16 }, { width: 16 }, { width: 16 }];
+          imageSheet.getCell("A3").value = "图片文件";
+          imageSheet.getCell("B3").value = state.uploadedFile ? state.uploadedFile.name : "未插入图片";
+          imageSheet.getCell("A3").font = { name: "Microsoft YaHei", bold: true, color: { argb: colors.navy } };
+          imageSheet.getCell("B3").font = { name: "Microsoft YaHei", color: { argb: colors.ink } };
+          if (state.imageDataUrl) {
+            const imageId = workbook.addImage({ base64: state.imageDataUrl, extension: "jpeg" });
+            const scale = Math.min(1, 1100 / state.imageWidth, 900 / state.imageHeight);
+            imageSheet.addImage(imageId, { tl: { col: 0, row: 4 }, ext: { width: Math.round(state.imageWidth * scale), height: Math.round(state.imageHeight * scale) } });
+          } else {
+            styleNote(imageSheet, "A5:H6", "本次未插入原始菜谱图片。", colors.pale, colors.navy);
+          }
+
+          const buffer = await workbook.xlsx.writeBuffer();
+          const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+          const dates = dateEntries.map(([date]) => date);
+          const fileName = `幼儿园食材用量_${dates[0]}至${dates[dates.length - 1]}_${students}名学生.xlsx`;
+          if (state.downloadUrl) URL.revokeObjectURL(state.downloadUrl);
+          state.downloadUrl = URL.createObjectURL(blob);
+          const downloadLink = $("downloadLink");
+          downloadLink.href = state.downloadUrl;
+          downloadLink.download = fileName;
+          downloadLink.dataset.bytes = String(buffer.byteLength);
+          downloadLink.dataset.signature = Array.from(new Uint8Array(buffer.slice(0, 4))).join(",");
+          downloadLink.hidden = false;
+          if (!/iPad|iPhone|iPod/.test(navigator.userAgent)) downloadLink.click();
+          showToast("Excel已生成；若未自动下载，请点击下载链接");
+        } catch (error) {
+          console.error(error);
+          showToast("生成Excel失败，请检查食材数据后重试");
+        } finally {
+          $("exportBtn").disabled = state.rows.length === 0;
+          $("exportBtn").textContent = "生成并下载 Excel";
+        }
+      }
+
+      $("weekStart").value = getMonday();
+      $("studentCount").addEventListener("input", updateComputedCells);
+      $("jinGrams").addEventListener("input", updateComputedCells);
+      $("imageInput").addEventListener("change", (event) => handleImage(event.target.files[0]));
+      $("recognizeBtn").addEventListener("click", recognizeImage);
+      $("removeImageBtn").addEventListener("click", removeImage);
+      $("parseBtn").addEventListener("click", parseOcrText);
+      $("clearTextBtn").addEventListener("click", () => { $("ocrText").value = ""; });
+      $("sampleBtn").addEventListener("click", () => {
+        $("weekStart").value = "2026-08-24";
+        state.rows = sampleRows.map(([date, meal, ingredient, grams, source, sick]) => newRow({ date, meal, ingredient, grams, source, sick }));
+        renderRows();
+        showToast("已加载8月24日和8月31日示例数据");
+      });
+      $("addRowBtn").addEventListener("click", () => {
+        state.rows.push(newRow({ date: $("weekStart").value, meal: "未分类" }));
+        renderRows();
+        const wrap = document.querySelector(".table-wrap");
+        wrap.scrollTop = wrap.scrollHeight;
+      });
+      $("mergeBtn").addEventListener("click", () => {
+        state.rows = mergeDuplicateRows();
+        renderRows();
+        showToast("已合并同一天的同名食材");
+      });
+      $("clearRowsBtn").addEventListener("click", () => {
+        if (!state.rows.length || confirm("确定清空全部食材明细吗？")) {
+          state.rows = [];
+          renderRows();
+        }
+      });
+      $("exportBtn").addEventListener("click", exportWorkbook);
+
+      $("ingredientBody").addEventListener("input", (event) => {
+        const tr = event.target.closest("tr[data-id]");
+        if (!tr) return;
+        const row = state.rows.find((r) => r.id === Number(tr.dataset.id));
+        if (!row) return;
+        const key = event.target.dataset.key;
+        if (!key) return;
+        if (key === "grams") row.grams = Math.max(0, Number(event.target.value) || 0);
+        else if (key === "sick") row.sick = event.target.checked;
+        else row[key] = event.target.value;
+        if (key === "grams") {
+          tr.querySelector("[data-total-g]").textContent = totalGrams(row).toFixed(1);
+          tr.querySelector("[data-total-jin]").textContent = totalJin(row).toFixed(3);
+        }
+        updateStats();
+      });
+      $("ingredientBody").addEventListener("change", (event) => {
+        const tr = event.target.closest("tr[data-id]");
+        if (!tr) return;
+        const row = state.rows.find((r) => r.id === Number(tr.dataset.id));
+        if (!row) return;
+        const key = event.target.dataset.key;
+        if (key === "sick") {
+          row.sick = event.target.checked;
+          row.meal = row.sick ? "病号菜" : (row.meal === "病号菜" ? "未分类" : row.meal);
+          renderRows();
+        } else if (key) {
+          row[key] = event.target.value;
+          if (key === "meal" && event.target.value === "病号菜") row.sick = true;
+          renderRows();
+        }
+      });
+      $("ingredientBody").addEventListener("click", (event) => {
+        const button = event.target.closest("[data-delete]");
+        if (!button) return;
+        const tr = button.closest("tr[data-id]");
+        state.rows = state.rows.filter((row) => row.id !== Number(tr.dataset.id));
+        renderRows();
+      });
+
+      const dropzone = $("dropzone");
+      ["dragenter", "dragover"].forEach((type) => dropzone.addEventListener(type, (event) => { event.preventDefault(); dropzone.classList.add("dragover"); }));
+      ["dragleave", "drop"].forEach((type) => dropzone.addEventListener(type, (event) => { event.preventDefault(); dropzone.classList.remove("dragover"); }));
+      dropzone.addEventListener("drop", (event) => handleImage(event.dataTransfer.files[0]));
+
+      window.addEventListener("load", () => {
+        const ready = Boolean(window.Tesseract && window.ExcelJS);
+        $("libraryDot").classList.add(ready ? "ready" : "error");
+        $("libraryStatus").textContent = ready ? "在线组件已就绪" : "在线组件加载失败";
+      });
+      renderRows();
+    })();
+  </script>
+</body>
+</html>
