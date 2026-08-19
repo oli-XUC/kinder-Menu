@@ -4,9 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#1f4e78">
-  <title>幼儿园食材用量识别工具 V4</title>
+  <title>幼儿园食材用量识别工具 V7</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <style>
     :root {
       --navy: #1f4e78;
@@ -53,7 +55,7 @@
       border-bottom: 1px solid rgba(255,255,255,.14);
     }
     .topbar-inner {
-      max-width: 1460px;
+      max-width: 1780px;
       margin: 0 auto;
       padding: 14px 24px;
       display: flex;
@@ -84,7 +86,7 @@
     }
 
     .page {
-      max-width: 1460px;
+      max-width: 1780px;
       margin: 0 auto;
       padding: 26px 24px 52px;
     }
@@ -129,7 +131,7 @@
 
     .workspace {
       display: grid;
-      grid-template-columns: minmax(360px, .78fr) minmax(0, 1.22fr);
+      grid-template-columns: minmax(330px, 370px) minmax(0, 1fr);
       gap: 18px;
       align-items: start;
     }
@@ -256,8 +258,8 @@
     .table-tools { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
     .table-tools .button-row { margin: 0; }
     .table-note { color: var(--muted); font-size: 12px; }
-    .table-wrap { overflow: auto; border: 1px solid var(--line); border-radius: 14px; max-height: 660px; background: #fff; }
-    table { width: 100%; min-width: 900px; border-collapse: separate; border-spacing: 0; font-size: 12px; }
+    .table-wrap { overflow-y: auto; overflow-x: hidden; border: 1px solid var(--line); border-radius: 14px; max-height: 660px; background: #fff; }
+    table { width: 100%; min-width: 0; table-layout: fixed; border-collapse: separate; border-spacing: 0; font-size: 12px; }
     th {
       position: sticky;
       top: 0;
@@ -294,6 +296,7 @@
     }
     .cell-input:focus, .cell-select:focus { border-color: #9dc5e4; background: #fff; box-shadow: 0 0 0 2px rgba(91,155,213,.1); }
     .number-cell { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .weight-input { text-align: right; font-variant-numeric: tabular-nums; }
     .check-cell { text-align: center; }
     .row-delete { width: 30px; height: 30px; border: 0; border-radius: 8px; color: var(--red); background: var(--red-bg); font-weight: 900; }
     .empty-state { padding: 54px 20px; text-align: center; color: var(--muted); }
@@ -359,6 +362,10 @@
       .excel-upload-card .btn { width: 100%; }
       .button-row .btn { flex: 1 1 auto; }
       .stats { grid-template-columns: repeat(2, 1fr); }
+      th { padding: 10px 4px; font-size: 11px; }
+      td { padding: 5px 3px; }
+      .cell-input { padding: 0 5px; font-size: 12px; }
+      .row-delete { width: 28px; height: 28px; }
     }
   </style>
 </head>
@@ -369,7 +376,7 @@
         <div class="brand-mark" aria-hidden="true">▦</div>
         <div>
           <h1>幼儿园食材用量识别工具</h1>
-          <p>Excel精准读取 · 指定周识别 · 多周独立统计 · V4</p>
+          <p>Excel精准读取 · 三种报告格式 · 多周独立统计 · V7</p>
         </div>
       </div>
       <div class="privacy-pill">文件仅在当前浏览器内处理</div>
@@ -383,7 +390,7 @@
         <h2>上传菜谱 Excel，生成每日食材用量</h2>
         <p class="hero-copy">直接读取Excel单元格，自动忽略“第…周带量”。可指定只识别某一周；不填写周次时，自动统计文件内全部“第…周”工作表。</p>
         <div class="hero-tags">
-          <span class="hero-tag">GitHub版 V4</span>
+          <span class="hero-tag">GitHub版 V7</span>
           <span class="hero-tag">适配GitHub Pages</span>
           <span class="hero-tag">学生人数可修改</span>
           <span class="hero-tag">多周独立数据卡</span>
@@ -395,7 +402,7 @@
         <h3>三步完成</h3>
         <div class="flow-step"><div class="flow-index">1</div><div><strong>选择统计范围</strong><span>输入指定周次，或留空统计全部周。</span></div></div>
         <div class="flow-step"><div class="flow-index">2</div><div><strong>分周核对</strong><span>点击周数据卡，逐项修改、增加或删除。</span></div></div>
-        <div class="flow-step"><div class="flow-index">3</div><div><strong>生成Excel</strong><span>每周独立工作表，每天使用醒目分隔线。</span></div></div>
+        <div class="flow-step"><div class="flow-index">3</div><div><strong>生成报告</strong><span>选择Excel或PDF，每天均使用醒目分隔线。</span></div></div>
       </aside>
     </section>
 
@@ -442,7 +449,7 @@
           <div class="stats">
             <div class="stat"><span>当前明细</span><strong id="rowCount">0项</strong></div>
             <div class="stat"><span>正常餐合计</span><strong id="normalTotal">0.000斤</strong></div>
-            <div class="stat"><span>病号菜合计</span><strong id="sickTotal">0.000斤</strong></div>
+            <div class="stat"><span>病号餐合计</span><strong id="sickTotal">0.000斤</strong></div>
             <div class="stat"><span>覆盖日期</span><strong id="dateCount">0天</strong></div>
           </div>
 
@@ -452,12 +459,13 @@
               <button id="mergeBtn" class="btn btn-soft" type="button">合并同日同食材</button>
               <button id="clearRowsBtn" class="btn btn-danger" type="button">清空当前周</button>
             </div>
-            <div class="table-note">勾选“病号菜”后不会计入正常餐汇总</div>
+            <div class="table-note">勾选“病号餐”后不会计入正常餐汇总</div>
           </div>
 
           <div class="table-wrap">
-            <table aria-label="食材用量明细">
-              <thead><tr><th style="width:126px">日期</th><th style="width:118px">餐次</th><th style="width:170px">食材</th><th style="width:110px">每人(g)</th><th style="width:108px">总量(g)</th><th style="width:105px">总量(斤)</th><th style="width:82px">病号菜</th><th style="width:54px">删除</th></tr></thead>
+            <table aria-label="报告生成前的食材统计">
+              <colgroup><col style="width:44%"><col style="width:25%"><col style="width:17%"><col style="width:14%"></colgroup>
+              <thead><tr><th>菜名</th><th>总重（斤）</th><th>病号餐</th><th>删除</th></tr></thead>
               <tbody id="ingredientBody"></tbody>
             </table>
             <div id="emptyState" class="empty-state"><strong>还没有食材数据</strong>选择统计范围后，上传原始Excel。</div>
@@ -465,12 +473,12 @@
 
           <div class="export-box" style="margin-top:16px">
             <div>
-              <h4>生成分周 Excel 工作簿</h4>
-              <p>每周建立独立工作表；每天按日期分组并使用醒目色带、粗线和当日合计区分。不会输出“菜品来源说明”列。</p>
+              <h4>生成分周统计报告</h4>
+              <p>可生成总量Excel、PDF或独立的分餐带量明细Excel；明细表不合并单元格，各栏文字逐行重复。</p>
             </div>
             <div class="export-actions">
-              <button id="exportBtn" class="btn btn-green" type="button" disabled>生成并下载 Excel</button>
-              <a id="downloadLink" class="btn download-ready" href="#" download hidden>Excel已生成，点击下载</a>
+              <div class="field"><label for="reportFormat">报告格式</label><select id="reportFormat" class="select"><option value="xlsx">食材总量Excel</option><option value="class-xlsx">分餐带量明细Excel</option><option value="pdf">食材总量PDF</option></select></div>
+              <button id="exportBtn" class="btn btn-green" type="button" disabled>生成所选报告</button>
             </div>
           </div>
         </div>
@@ -574,9 +582,19 @@
         return ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][new Date(`${isoDate}T00:00:00`).getDay()];
       }
 
-      function newRow({ week = "", date, meal = "未分类", ingredient = "", grams = 0, sick = false }) {
+      function newRow({ week = "", date, meal = "未分类", dish = "", ingredient = "", grams = 0, sick = false, details = [] }) {
         const fallbackWeek = state.activeWeek || "手动录入";
-        return { id: state.nextId++, week: String(week || fallbackWeek), date: validIsoDate(date) ? date : (state.defaultDate || getMonday()), meal, ingredient, grams: Number(grams) || 0, sick: Boolean(sick) };
+        return {
+          id: state.nextId++,
+          week: String(week || fallbackWeek),
+          date: validIsoDate(date) ? date : (state.defaultDate || getMonday()),
+          meal,
+          dish: String(dish || "").trim(),
+          ingredient,
+          grams: Number(grams) || 0,
+          sick: Boolean(sick),
+          details: Array.isArray(details) ? details.map((item) => ({ ...item })) : [],
+        };
       }
 
       function escapeHtml(value) {
@@ -587,6 +605,37 @@
       function jinGrams() { return 500; }
       function totalGrams(row) { return row.grams * studentCount(); }
       function totalJin(row) { return totalGrams(row) / jinGrams(); }
+
+      function setRowPerPersonGrams(row, nextGrams) {
+        const next = Math.max(0, Number(nextGrams) || 0);
+        const previous = Math.max(0, Number(row.grams) || 0);
+        if (Array.isArray(row.details) && row.details.length) {
+          if (previous > 0) {
+            const scale = next / previous;
+            row.details.forEach((item) => { item.grams = (Number(item.grams) || 0) * scale; });
+          } else {
+            const each = next / row.details.length;
+            row.details.forEach((item) => { item.grams = each; });
+          }
+        }
+        row.grams = next;
+      }
+
+      function setRowIngredient(row, ingredient) {
+        row.ingredient = ingredient;
+        if (Array.isArray(row.details)) row.details.forEach((item) => { item.ingredient = ingredient; });
+      }
+
+      function setRowSick(row, sick) {
+        row.sick = Boolean(sick);
+        row.meal = row.sick ? "病号菜" : (row.meal === "病号菜" ? "未分类" : row.meal);
+        if (Array.isArray(row.details)) {
+          row.details.forEach((item) => {
+            item.sick = row.sick;
+            item.meal = row.sick ? "病号菜" : (item.meal === "病号菜" ? "未分类" : item.meal);
+          });
+        }
+      }
 
       function showToast(message) {
         const toast = $("toast");
@@ -626,19 +675,14 @@
         const visible = weekRows().slice().sort((a, b) => a.date.localeCompare(b.date) || (mealOrder[a.meal] ?? 99) - (mealOrder[b.meal] ?? 99) || a.ingredient.localeCompare(b.ingredient, "zh-CN"));
         let previousDate = "";
         body.innerHTML = visible.map((row, index) => {
-          const options = mealOptions.map((meal) => `<option value="${meal}"${row.meal === meal ? " selected" : ""}>${meal}</option>`).join("");
           const dayStart = row.date !== previousDate;
           const dayEnd = !visible[index + 1] || visible[index + 1].date !== row.date;
           previousDate = row.date;
-          const divider = dayStart ? `<tr class="day-divider"><td colspan="8">${escapeHtml(row.date)}　${escapeHtml(weekdayName(row.date))}</td></tr>` : "";
+          const divider = dayStart ? `<tr class="day-divider"><td colspan="4">${escapeHtml(row.date)}　${escapeHtml(weekdayName(row.date))}</td></tr>` : "";
           return `${divider}<tr data-id="${row.id}" class="${row.sick ? "sick-row " : ""}${dayEnd ? "day-end" : ""}">
-            <td><input class="cell-input" data-key="date" type="date" value="${escapeHtml(row.date)}"></td>
-            <td><select class="cell-select" data-key="meal">${options}</select></td>
             <td><input class="cell-input" data-key="ingredient" type="text" value="${escapeHtml(row.ingredient)}" placeholder="食材名称"></td>
-            <td><input class="cell-input number-cell" data-key="grams" type="number" min="0" step="0.1" value="${Number(row.grams)}"></td>
-            <td class="number-cell" data-total-g>${totalGrams(row).toFixed(1)}</td>
-            <td class="number-cell" data-total-jin>${totalJin(row).toFixed(3)}</td>
-            <td class="check-cell"><input data-key="sick" type="checkbox" ${row.sick ? "checked" : ""} aria-label="标记为病号菜"></td>
+            <td><input class="cell-input weight-input" data-key="totalJin" data-total-jin-input type="number" min="0" step="0.001" value="${totalJin(row).toFixed(3)}" aria-label="总重，单位斤"></td>
+            <td class="check-cell"><input data-key="sick" type="checkbox" ${row.sick ? "checked" : ""} aria-label="标记为病号餐"></td>
             <td class="check-cell"><button class="row-delete" type="button" data-delete aria-label="删除这一行">×</button></td>
           </tr>`;
         }).join("");
@@ -651,8 +695,8 @@
         document.querySelectorAll("#ingredientBody tr[data-id]").forEach((tr) => {
           const row = state.rows.find((r) => r.id === Number(tr.dataset.id));
           if (!row) return;
-          tr.querySelector("[data-total-g]").textContent = totalGrams(row).toFixed(1);
-          tr.querySelector("[data-total-jin]").textContent = totalJin(row).toFixed(3);
+          const input = tr.querySelector("[data-total-jin-input]");
+          if (input) input.value = totalJin(row).toFixed(3);
         });
         updateStats();
       }
@@ -684,11 +728,24 @@
           const ingredient = String(row.ingredient || "").trim();
           if (!ingredient) continue;
           const key = `${row.week}|${row.date}|${row.sick ? 1 : 0}|${ingredient}`;
+          const sourceDetails = Array.isArray(row.details) && row.details.length
+            ? row.details.map((item) => ({ ...item }))
+            : [{
+                week: row.week,
+                date: row.date,
+                meal: row.meal,
+                dish: String(row.dish || ingredient).trim(),
+                ingredient,
+                grams: Number(row.grams) || 0,
+                sick: Boolean(row.sick),
+                sourceOrder: Number(row.sourceOrder) || Number(row.id) || 0,
+              }];
           if (!map.has(key)) {
-            map.set(key, newRow({ ...row, ingredient }));
+            map.set(key, newRow({ ...row, ingredient, details: sourceDetails }));
           } else {
             const current = map.get(key);
             current.grams += Number(row.grams) || 0;
+            current.details.push(...sourceDetails);
             const meals = new Set(String(current.meal).split("+").concat(String(row.meal).split("+")));
             current.meal = [...meals].sort((a, b) => (mealOrder[a] ?? 99) - (mealOrder[b] ?? 99)).join("+");
           }
@@ -751,18 +808,6 @@
             grid[row - range.s.r][column - range.s.c] = cellText(worksheet[address]);
           }
         }
-        for (const merge of worksheet["!merges"] || []) {
-          const sourceAddress = XLSX.utils.encode_cell({ r: merge.s.r, c: merge.s.c });
-          const value = cellText(worksheet[sourceAddress]);
-          if (!value) continue;
-          for (let row = merge.s.r; row <= merge.e.r; row++) {
-            for (let column = merge.s.c; column <= merge.e.c; column++) {
-              if (row >= range.s.r && column >= range.s.c && row <= range.e.r && column <= range.e.c) {
-                grid[row - range.s.r][column - range.s.c] = value;
-              }
-            }
-          }
-        }
         return grid;
       }
 
@@ -774,13 +819,19 @@
         const limit = Math.min(grid.length, 35);
         let best = { index: -1, score: 0 };
         for (let index = 0; index < limit; index++) {
-          const values = grid[index].map(normalizeHeader);
-          const combined = values.join("|");
+          const direct = (grid[index] || []).map(normalizeHeader);
+          const nearby = [grid[index - 1] || [], grid[index] || [], grid[index + 1] || []].flat().map(normalizeHeader);
+          const directText = direct.join("|");
+          const combined = nearby.join("|");
           let score = 0;
           if (/星期|日期/.test(combined)) score += 3;
           for (const pattern of [/早餐/, /主食/, /菜/, /汤/, /水果/, /午点/, /病号/]) {
             if (pattern.test(combined)) score += 1;
           }
+          if (/主食/.test(directText)) score += 3;
+          if (/(^|\|)菜($|\|)/.test(directText)) score += 2;
+          if (/(^|\|)汤($|\|)/.test(directText)) score += 2;
+          if (/年龄|龄组/.test(directText)) score += 2;
           if (score > best.score) best = { index, score };
         }
         return best.score >= 5 ? best.index : -1;
@@ -834,23 +885,45 @@
           .replace(/ｇ/gi, "g")
           .replace(/克/g, "g")
           .replace(/[﹙〔【]/g, "（")
-          .replace(/[﹚〕】]/g, "）");
-        const dishTitle = dishTitleFromCell(text);
+          .replace(/[﹚〕】]/g, "）")
+          .replace(/([\u3400-\u9fffA-Za-z·])\s*[\r\n]+\s*(?=（)/g, "$1");
         const results = [];
         const seen = new Set();
-        for (const match of text.matchAll(/(\d+(?:\.\d+)?)\s*g/gi)) {
-          const grams = Number(match[1]);
-          if (!Number.isFinite(grams) || grams <= 0 || grams > 2000) continue;
-          const prefix = text.slice(Math.max(0, match.index - 45), match.index).replace(/[\s　]+/g, "");
-          const nameMatch = prefix.match(/([\u3400-\u9fff·]{1,20})$/);
-          let ingredient = cleanIngredientName(nameMatch ? nameMatch[1] : dishTitle);
-          ingredient = ingredient.replace(/^(约|每人|左右)+/, "").replace(/(约|每人|左右)+$/, "");
-          if (!ingredient || /^(托小班|中班|大班|小班|人)$/.test(ingredient)) ingredient = dishTitle;
-          if (!ingredient) continue;
-          const key = `${ingredient}|${grams}`;
-          if (!seen.has(key)) {
-            seen.add(key);
-            results.push({ ingredient, grams });
+        const parseWeights = (detailText, suppliedDish = "") => {
+          const dishTitle = cleanIngredientName(suppliedDish) || dishTitleFromCell(detailText);
+          for (const match of String(detailText || "").matchAll(/(\d+(?:\.\d+)?)\s*g/gi)) {
+            const grams = Number(match[1]);
+            if (!Number.isFinite(grams) || grams <= 0 || grams > 2000) continue;
+            const prefix = String(detailText).slice(Math.max(0, match.index - 45), match.index).replace(/[\s　]+/g, "");
+            const nameMatch = prefix.match(/([\u3400-\u9fff·]{1,20})$/);
+            let ingredient = cleanIngredientName(nameMatch ? nameMatch[1] : dishTitle);
+            ingredient = ingredient.replace(/^(约|每人|左右)+/, "").replace(/(约|每人|左右)+$/, "");
+            if (!ingredient || /^(托小班|中班|大班|小班|人)$/.test(ingredient)) ingredient = dishTitle;
+            if (!ingredient) continue;
+            const dish = dishTitle || ingredient;
+            const key = `${dish}|${ingredient}|${grams}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              results.push({ dish, ingredient, grams });
+            }
+          }
+        };
+
+        const leftovers = [];
+        for (const line of text.split(/[\r\n]+/)) {
+          if (!line.trim()) continue;
+          let cursor = 0;
+          const pattern = /([\u3400-\u9fffA-Za-z·]{1,30})\s*（([^（）]*)）/g;
+          for (const match of line.matchAll(pattern)) {
+            if (match.index > cursor) leftovers.push(line.slice(cursor, match.index));
+            parseWeights(match[2], match[1]);
+            cursor = match.index + match[0].length;
+          }
+          if (cursor < line.length) leftovers.push(line.slice(cursor));
+        }
+        for (const leftover of leftovers) {
+          for (const segment of leftover.split(/[；;]/)) {
+            if (/\d+(?:\.\d+)?\s*g/i.test(segment)) parseWeights(segment);
           }
         }
         return results;
@@ -860,7 +933,12 @@
         const grid = worksheetGrid(worksheet);
         const headerIndex = findMenuHeaderRow(grid);
         if (headerIndex < 0) return { rows: [], error: "未找到菜谱表头" };
-        const headers = grid[headerIndex];
+        const columnCount = Math.max(...[grid[headerIndex - 1] || [], grid[headerIndex] || [], grid[headerIndex + 1] || []].map((row) => row.length));
+        const headers = Array.from({ length: columnCount }, (_, column) => [
+          grid[headerIndex - 1]?.[column] || "",
+          grid[headerIndex]?.[column] || "",
+          grid[headerIndex + 1]?.[column] || "",
+        ].join(" "));
         let dateColumn = headers.findIndex((value) => /星期|日期/.test(normalizeHeader(value)));
         if (dateColumn < 0) dateColumn = 0;
         const mealColumns = headers.map(mealForHeader);
@@ -884,6 +962,7 @@
                 week: weekName,
                 date: currentDate,
                 meal,
+                dish: pair.dish,
                 ingredient: pair.ingredient,
                 grams: pair.grams,
                 sick: meal === "病号菜",
@@ -1043,6 +1122,61 @@
         return mergeDuplicateRows(state.rows).filter((row) => row.ingredient && row.grams > 0 && validIsoDate(row.date));
       }
 
+      const classMealNames = {
+        "早餐": "早点",
+        "午餐主食": "主食",
+        "搭配": "主食",
+        "午餐菜": "午餐",
+        "午餐汤": "汤",
+        "水果": "水果",
+        "午点": "午点",
+        "病号菜": "病号菜",
+        "未分类": "午餐",
+      };
+      const classMealOrder = Object.fromEntries(["早点", "主食", "午餐", "汤", "水果", "午点", "病号菜"].map((name, index) => [name, index]));
+
+      function detailedForExport() {
+        const map = new Map();
+        for (const summary of state.rows) {
+          const details = Array.isArray(summary.details) && summary.details.length
+            ? summary.details
+            : [{
+                week: summary.week,
+                date: summary.date,
+                meal: summary.meal,
+                dish: summary.dish || summary.ingredient,
+                ingredient: summary.ingredient,
+                grams: summary.grams,
+                sick: summary.sick,
+                sourceOrder: summary.id,
+              }];
+          for (const item of details) {
+            const ingredient = String(item.ingredient || "").trim();
+            const grams = Number(item.grams) || 0;
+            const date = String(item.date || summary.date || "");
+            if (!ingredient || grams <= 0 || !validIsoDate(date)) continue;
+            const week = String(item.week || summary.week || "手动录入");
+            const meal = item.sick ? "病号菜" : (classMealNames[item.meal] || "午餐");
+            const dish = String(item.dish || summary.dish || ingredient).trim() || ingredient;
+            const key = `${week}|${date}|${meal}|${dish}|${ingredient}`;
+            if (!map.has(key)) {
+              map.set(key, { week, date, meal, dish, ingredient, grams, sourceOrder: Number(item.sourceOrder) || Number(summary.id) || 0 });
+            } else {
+              map.get(key).grams += grams;
+            }
+          }
+        }
+        const weekIndex = new Map(state.weekOrder.map((week, index) => [week, index]));
+        return [...map.values()].sort((a, b) =>
+          (weekIndex.get(a.week) ?? 999) - (weekIndex.get(b.week) ?? 999)
+          || a.date.localeCompare(b.date)
+          || (classMealOrder[a.meal] ?? 99) - (classMealOrder[b.meal] ?? 99)
+          || a.sourceOrder - b.sourceOrder
+          || a.dish.localeCompare(b.dish, "zh-CN")
+          || a.ingredient.localeCompare(b.ingredient, "zh-CN")
+        );
+      }
+
       function safeSheetName(name, usedNames) {
         const base = String(name || "数据卡").replace(/[\\/\?\*\[\]:]/g, "-").slice(0, 31) || "数据卡";
         let candidate = base;
@@ -1192,6 +1326,18 @@
         return { dateEntries, normalRows, sickRows, normalTotal, sickTotal };
       }
 
+      function triggerBlobDownload(blob, fileName) {
+        if (state.downloadUrl) URL.revokeObjectURL(state.downloadUrl);
+        state.downloadUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = state.downloadUrl;
+        link.download = fileName;
+        link.style.display = "none";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      }
+
       async function exportWorkbook() {
         if (!window.ExcelJS) {
           showToast("Excel组件尚未加载，请检查网络后刷新页面");
@@ -1202,8 +1348,6 @@
           showToast("至少需要一条正常餐食材数据");
           return;
         }
-        $("exportBtn").disabled = true;
-        $("exportBtn").textContent = "正在生成…";
         try {
           const students = studentCount();
           const oneJin = jinGrams();
@@ -1259,22 +1403,234 @@
           const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
           const weekLabel = weekNames.length === 1 ? weekNames[0] : `${weekNames[0]}至${weekNames[weekNames.length - 1]}`;
           const fileName = `幼儿园食材用量_${weekLabel}_${students}名学生.xlsx`;
-          if (state.downloadUrl) URL.revokeObjectURL(state.downloadUrl);
-          state.downloadUrl = URL.createObjectURL(blob);
-          const downloadLink = $("downloadLink");
-          downloadLink.href = state.downloadUrl;
-          downloadLink.download = fileName;
-          downloadLink.dataset.bytes = String(buffer.byteLength);
-          downloadLink.dataset.signature = Array.from(new Uint8Array(buffer.slice(0, 4))).join(",");
-          downloadLink.hidden = false;
-          if (!/iPad|iPhone|iPod/.test(navigator.userAgent)) downloadLink.click();
-          showToast("Excel已生成；若未自动下载，请点击下载链接");
+          triggerBlobDownload(blob, fileName);
+          showToast("Excel报告已生成并开始下载");
         } catch (error) {
           console.error(error);
           showToast("生成Excel失败，请检查食材数据后重试");
+        }
+      }
+
+      async function exportClassQuantityWorkbook() {
+        if (!window.ExcelJS) {
+          showToast("Excel组件尚未加载，请检查网络后刷新页面");
+          return;
+        }
+        const detailRows = detailedForExport();
+        if (!detailRows.length) {
+          showToast("没有可生成的分餐带量明细");
+          return;
+        }
+        try {
+          const workbook = new ExcelJS.Workbook();
+          workbook.creator = "Oliver XUC";
+          workbook.created = new Date();
+          workbook.modified = new Date();
+          const usedNames = new Set();
+          const weekNames = state.weekOrder.filter((week) => detailRows.some((row) => row.week === week));
+          for (const row of detailRows) if (!weekNames.includes(row.week)) weekNames.push(row.week);
+
+          for (const week of weekNames) {
+            const ws = workbook.addWorksheet(safeSheetName(week, usedNames), { views: [{ showGridLines: false, state: "frozen", ySplit: 1 }] });
+            ws.columns = [
+              { width: 15 }, { width: 12 }, { width: 25 }, { width: 21 }, { width: 12 },
+              { width: 12 }, { width: 12 }, { width: 12 }, { width: 12 },
+            ];
+            setRowValues(ws, 1, ["日期", "餐类", "菜名", "原料名称", "学段", "托班", "小班", "中班", "大班"]);
+            styleHeader(ws.getRow(1));
+            ws.getRow(1).height = 29;
+            ws.autoFilter = { from: "A1", to: "I1" };
+
+            const weekRows = detailRows.filter((row) => row.week === week);
+            const dates = [...new Set(weekRows.map((row) => row.date))].sort();
+            let cursor = 2;
+            dates.forEach((date, dateIndex) => {
+              const dayStart = cursor;
+              const dayRows = weekRows.filter((row) => row.date === date);
+              const meals = [...new Set(dayRows.map((row) => row.meal))].sort((a, b) => (classMealOrder[a] ?? 99) - (classMealOrder[b] ?? 99));
+              for (const meal of meals) {
+                const mealRows = dayRows.filter((row) => row.meal === meal);
+                const dishes = [...new Set(mealRows.map((row) => row.dish))];
+                for (const dish of dishes) {
+                  const ingredients = mealRows.filter((row) => row.dish === dish);
+                  for (const item of ingredients) {
+                    setRowValues(ws, cursor, [
+                      new Date(`${date}T00:00:00`),
+                      meal,
+                      dish,
+                      item.ingredient,
+                      "托小中",
+                      item.grams,
+                      item.grams,
+                      item.grams,
+                      item.grams,
+                    ]);
+                    ws.getCell(`A${cursor}`).numFmt = "yyyy-mm-dd";
+                    for (let column = 6; column <= 9; column++) ws.getRow(cursor).getCell(column).numFmt = "0.0";
+                    const excelRow = ws.getRow(cursor);
+                    excelRow.height = 23;
+                    excelRow.eachCell({ includeEmpty: true }, (cell, column) => {
+                      cell.font = { name: "Microsoft YaHei", size: 10, color: { argb: colors.ink } };
+                      cell.alignment = { vertical: "middle", horizontal: column >= 6 ? "right" : "left", wrapText: true };
+                      cell.border = thinBorder;
+                      cell.fill = {
+                        type: "pattern",
+                        pattern: "solid",
+                        fgColor: { argb: meal === "病号菜" ? colors.peach : (dateIndex % 2 === 0 ? argb("F4FAFE") : colors.white) },
+                      };
+                    });
+                    cursor += 1;
+                  }
+                }
+              }
+              const dayEnd = cursor - 1;
+              for (let column = 1; column <= 9; column++) {
+                const topCell = ws.getRow(dayStart).getCell(column);
+                const bottomCell = ws.getRow(dayEnd).getCell(column);
+                topCell.border = { ...topCell.border, top: { style: "medium", color: { argb: colors.navy } } };
+                bottomCell.border = { ...bottomCell.border, bottom: { style: "medium", color: { argb: colors.navy } } };
+              }
+            });
+
+            ws.pageSetup = { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0, paperSize: 9 };
+            ws.headerFooter.oddFooter = "&L每人原料用量单位：g&C第 &P 页 / 共 &N 页&ROliver XUC";
+          }
+
+          const buffer = await workbook.xlsx.writeBuffer();
+          const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+          const weekLabel = weekNames.length === 1 ? weekNames[0] : `${weekNames[0]}至${weekNames[weekNames.length - 1]}`;
+          triggerBlobDownload(blob, `幼儿园分餐带量明细_${weekLabel}.xlsx`);
+          showToast("分餐带量明细Excel已生成并开始下载");
+        } catch (error) {
+          console.error(error);
+          showToast("生成分餐带量明细Excel失败，请检查数据后重试");
+        }
+      }
+
+      const pdfStyles = `
+        .pdf-page{width:1120px;min-height:740px;padding:34px 38px;box-sizing:border-box;background:#fff;color:#17324d;font-family:"Microsoft YaHei","PingFang SC","Noto Sans SC",sans-serif}
+        .pdf-page *{box-sizing:border-box}.pdf-head{display:flex;justify-content:space-between;gap:24px;align-items:flex-end;border-bottom:5px solid #1f4e78;padding-bottom:14px;margin-bottom:16px}
+        .pdf-head h1{margin:0;color:#1f4e78;font-size:28px}.pdf-head p{margin:6px 0 0;color:#60758a;font-size:13px}.pdf-badge{padding:8px 12px;border-radius:999px;background:#eaf3fb;color:#1f4e78;font-size:12px;font-weight:700;white-space:nowrap}
+        .pdf-params{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 15px}.pdf-param{padding:8px 11px;border:1px solid #c9dce9;border-radius:9px;background:#f4fafe;font-size:12px}.pdf-param strong{color:#1f4e78}
+        .pdf-page table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:12px}.pdf-page th{padding:8px 6px;border:1px solid #376d99;color:#fff;background:#5b9bd5;text-align:center}.pdf-page td{padding:7px 6px;border:1px solid #c9d8e5;vertical-align:middle;word-break:break-word}.pdf-page tbody tr:nth-child(even) td{background:#f6fbfe}.pdf-page tr.pdf-sick td{background:#fff0ee!important;color:#8f261d}
+        .pdf-total td{font-weight:700;background:#e9f7f1!important;color:#176344;border-top:3px solid #4f9a78}.pdf-overview td{text-align:center;padding:11px 7px}.pdf-note{margin-top:13px;padding:10px 12px;border-left:4px solid #e1b742;background:#fff4cf;color:#705700;font-size:12px}
+        .pdf-footer{margin-top:16px;padding-top:9px;border-top:1px solid #d7e3ed;display:flex;justify-content:space-between;color:#7f93a4;font-size:10px}
+      `;
+
+      function pdfPage(title, subtitle, badge, body, generatedAt) {
+        return `<div class="pdf-page">
+          <div class="pdf-head"><div><h1>${escapeHtml(title)}</h1><p>${escapeHtml(subtitle)}</p></div><div class="pdf-badge">${escapeHtml(badge)}</div></div>
+          ${body}
+          <div class="pdf-footer"><span>幼儿园食材用量统计</span><span>生成时间：${escapeHtml(generatedAt)}</span></div>
+        </div>`;
+      }
+
+      function buildPdfPages(exportRows) {
+        const students = studentCount();
+        const smallMilk = Math.max(0, Number($("smallMilk").value) || 0);
+        const middleMilk = Math.max(0, Number($("middleMilk").value) || 0);
+        const schoolName = $("schoolName").value.trim() || "幼儿园";
+        const generatedAt = new Date().toLocaleString("zh-CN", { hour12: false });
+        const weekNames = state.weekOrder.filter((week) => exportRows.some((row) => row.week === week));
+        const pages = [];
+        const overviewRows = weekNames.map((week) => {
+          const rows = exportRows.filter((row) => row.week === week);
+          const dates = [...new Set(rows.map((row) => row.date))].sort();
+          const normal = rows.filter((row) => !row.sick).reduce((sum, row) => sum + row.grams * students / 500, 0);
+          const sick = rows.filter((row) => row.sick).reduce((sum, row) => sum + row.grams * students / 500, 0);
+          return `<tr><td>${escapeHtml(week)}</td><td>${escapeHtml(dates.length ? `${dates[0]} 至 ${dates[dates.length - 1]}` : "")}</td><td>${dates.length}</td><td>${rows.length}</td><td>${normal.toFixed(3)}</td><td>${sick.toFixed(3)}</td></tr>`;
+        }).join("");
+        const overviewBody = `
+          <div class="pdf-params"><div class="pdf-param"><strong>学生人数</strong>　${students}人</div><div class="pdf-param"><strong>托小班奶量</strong>　${smallMilk}ml/人</div><div class="pdf-param"><strong>中班奶量</strong>　${middleMilk}ml/人</div></div>
+          <table class="pdf-overview"><thead><tr><th>周次</th><th>日期范围</th><th>天数</th><th>食材项数</th><th>正常餐合计(斤)</th><th>病号菜合计(斤)</th></tr></thead><tbody>${overviewRows}</tbody></table>
+          <div class="pdf-note">每周、每天分别统计；正常餐合计不包含病号菜。“第…周带量”工作表未参与计算。</div>`;
+        pages.push(pdfPage(`${schoolName}｜食材用量总览`, `${weekNames.length}周统计 · ${students}名学生`, "统计总览", overviewBody, generatedAt));
+
+        for (const week of weekNames) {
+          const weekRows = exportRows.filter((row) => row.week === week).sort((a, b) => a.date.localeCompare(b.date) || (mealOrder[a.meal] ?? 99) - (mealOrder[b.meal] ?? 99));
+          const dates = [...new Set(weekRows.map((row) => row.date))].sort();
+          for (const date of dates) {
+            const items = weekRows.filter((row) => row.date === date);
+            const normalItems = items.filter((row) => !row.sick);
+            const dayTotalG = normalItems.reduce((sum, row) => sum + row.grams * students, 0);
+            const dayTotalJin = dayTotalG / 500;
+            const chunks = [];
+            for (let index = 0; index < items.length; index += 18) chunks.push(items.slice(index, index + 18));
+            chunks.forEach((chunk, chunkIndex) => {
+              const rowsHtml = chunk.map((row) => `<tr class="${row.sick ? "pdf-sick" : ""}"><td>${escapeHtml(row.meal)}</td><td>${escapeHtml(row.ingredient)}</td><td>${Number(row.grams).toFixed(1)}</td><td>${students}</td><td>${(row.grams * students).toFixed(1)}</td><td>${(row.grams * students / 500).toFixed(3)}</td><td>${row.sick ? "是" : "否"}</td></tr>`).join("");
+              const isLast = chunkIndex === chunks.length - 1;
+              const totalRow = isLast ? `<tr class="pdf-total"><td colspan="4">本日正常餐合计（不含病号菜）</td><td>${dayTotalG.toFixed(1)}</td><td>${dayTotalJin.toFixed(3)}</td><td>—</td></tr>` : "";
+              const body = `
+                <div class="pdf-params"><div class="pdf-param"><strong>学生人数</strong>　${students}人</div><div class="pdf-param"><strong>托小班奶量</strong>　${smallMilk}ml/人</div><div class="pdf-param"><strong>中班奶量</strong>　${middleMilk}ml/人</div></div>
+                <table><colgroup><col style="width:15%"><col style="width:24%"><col style="width:13%"><col style="width:11%"><col style="width:14%"><col style="width:14%"><col style="width:9%"></colgroup><thead><tr><th>餐次</th><th>食材</th><th>每人用量(g)</th><th>学生人数</th><th>总量(g)</th><th>总量(斤)</th><th>病号菜</th></tr></thead><tbody>${rowsHtml}${totalRow}</tbody></table>
+                ${!isLast ? '<div class="pdf-note">本日食材较多，下一页继续。</div>' : ""}`;
+              const part = chunks.length > 1 ? ` · 第${chunkIndex + 1}/${chunks.length}页` : "";
+              pages.push(pdfPage(`${week}｜${date} ${weekdayName(date)}`, `${schoolName} · 每日食材用量${part}`, `${items.length}项食材`, body, generatedAt));
+            });
+          }
+        }
+        return { pages, weekNames, students };
+      }
+
+      async function exportPdf() {
+        if (!window.jspdf?.jsPDF || !window.html2canvas) {
+          showToast("PDF组件尚未加载，请检查网络后刷新页面");
+          return;
+        }
+        const exportRows = aggregatedForExport();
+        if (!exportRows.some((row) => !row.sick)) {
+          showToast("至少需要一条正常餐食材数据");
+          return;
+        }
+        const { pages, weekNames, students } = buildPdfPages(exportRows);
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4", compress: true });
+        pdf.setProperties({ title: "幼儿园食材用量统计", author: "Oliver XUC", creator: "幼儿园食材用量识别工具" });
+        const stage = document.createElement("div");
+        stage.style.cssText = "position:fixed;left:-12000px;top:0;width:1120px;background:#fff;z-index:-1";
+        document.body.appendChild(stage);
+        try {
+          for (let index = 0; index < pages.length; index++) {
+            $("exportBtn").textContent = `正在生成PDF ${index + 1}/${pages.length}`;
+            stage.innerHTML = `<style>${pdfStyles}</style>${pages[index]}`;
+            const node = stage.querySelector(".pdf-page");
+            const canvas = await html2canvas(node, { scale: 1.5, backgroundColor: "#ffffff", logging: false, useCORS: true });
+            const image = canvas.toDataURL("image/jpeg", .92);
+            const pageWidth = 297;
+            const pageHeight = 210;
+            const ratio = Math.min(287 / canvas.width, 200 / canvas.height);
+            const width = canvas.width * ratio;
+            const height = canvas.height * ratio;
+            if (index > 0) pdf.addPage("a4", "landscape");
+            pdf.addImage(image, "JPEG", (pageWidth - width) / 2, (pageHeight - height) / 2, width, height, undefined, "FAST");
+          }
+          const weekLabel = weekNames.length === 1 ? weekNames[0] : `${weekNames[0]}至${weekNames[weekNames.length - 1]}`;
+          triggerBlobDownload(pdf.output("blob"), `幼儿园食材用量_${weekLabel}_${students}名学生.pdf`);
+          showToast("PDF报告已生成并开始下载");
+        } catch (error) {
+          console.error(error);
+          showToast("生成PDF失败，请刷新页面后重试");
         } finally {
-          $("exportBtn").disabled = state.rows.length === 0;
-          $("exportBtn").textContent = "生成并下载 Excel";
+          stage.remove();
+        }
+      }
+
+      async function generateSelectedReport() {
+        if (!state.rows.length) {
+          showToast("请先上传并识别Excel文件");
+          return;
+        }
+        const format = $("reportFormat").value;
+        const button = $("exportBtn");
+        button.disabled = true;
+        button.textContent = format === "pdf" ? "正在生成PDF…" : "正在生成Excel…";
+        try {
+          if (format === "pdf") await exportPdf();
+          else if (format === "class-xlsx") await exportClassQuantityWorkbook();
+          else await exportWorkbook();
+        } finally {
+          button.disabled = state.rows.length === 0;
+          button.textContent = "生成所选报告";
         }
       }
 
@@ -1307,7 +1663,7 @@
           renderRows();
         }
       });
-      $("exportBtn").addEventListener("click", exportWorkbook);
+      $("exportBtn").addEventListener("click", generateSelectedReport);
 
       $("weekCards").addEventListener("click", (event) => {
         const button = event.target.closest("[data-week]");
@@ -1323,13 +1679,10 @@
         if (!row) return;
         const key = event.target.dataset.key;
         if (!key) return;
-        if (key === "grams") row.grams = Math.max(0, Number(event.target.value) || 0);
-        else if (key === "sick") row.sick = event.target.checked;
+        if (key === "totalJin") setRowPerPersonGrams(row, Math.max(0, Number(event.target.value) || 0) * 500 / studentCount());
+        else if (key === "sick") setRowSick(row, event.target.checked);
+        else if (key === "ingredient") setRowIngredient(row, event.target.value);
         else row[key] = event.target.value;
-        if (key === "grams") {
-          tr.querySelector("[data-total-g]").textContent = totalGrams(row).toFixed(1);
-          tr.querySelector("[data-total-jin]").textContent = totalJin(row).toFixed(3);
-        }
         updateStats();
       });
       $("ingredientBody").addEventListener("change", (event) => {
@@ -1339,11 +1692,14 @@
         if (!row) return;
         const key = event.target.dataset.key;
         if (key === "sick") {
-          row.sick = event.target.checked;
-          row.meal = row.sick ? "病号菜" : (row.meal === "病号菜" ? "未分类" : row.meal);
+          setRowSick(row, event.target.checked);
+          renderRows();
+        } else if (key === "totalJin") {
+          setRowPerPersonGrams(row, Math.max(0, Number(event.target.value) || 0) * 500 / studentCount());
           renderRows();
         } else if (key) {
-          row[key] = event.target.value;
+          if (key === "ingredient") setRowIngredient(row, event.target.value);
+          else row[key] = event.target.value;
           if (key === "meal" && event.target.value === "病号菜") row.sick = true;
           renderRows();
         }
@@ -1357,7 +1713,7 @@
       });
 
       window.addEventListener("load", () => {
-        const ready = Boolean(window.XLSX && window.ExcelJS);
+        const ready = Boolean(window.XLSX && window.ExcelJS && window.jspdf?.jsPDF && window.html2canvas);
         $("libraryDot").classList.add(ready ? "ready" : "error");
         $("libraryStatus").textContent = ready ? "在线组件已就绪" : "在线组件加载失败";
       });
