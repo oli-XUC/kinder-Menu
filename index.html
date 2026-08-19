@@ -4,8 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#1f4e78">
-  <title>幼儿园食材用量识别工具</title>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <title>幼儿园食材用量识别工具 V3</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
   <style>
@@ -370,7 +369,7 @@
         <div class="brand-mark" aria-hidden="true">▦</div>
         <div>
           <h1>幼儿园食材用量识别工具</h1>
-          <p>Excel精准读取 · 图片辅助识别 · 多周独立统计</p>
+          <p>Excel精准读取 · 指定周识别 · 多周独立统计 · V3</p>
         </div>
       </div>
       <div class="privacy-pill">文件仅在当前浏览器内处理</div>
@@ -381,9 +380,10 @@
     <section class="hero">
       <div class="hero-main">
         <p class="eyebrow">Menu Workbook → Purchase Workbook</p>
-        <h2>上传菜谱 Excel 或图片，生成每日食材用量</h2>
-        <p class="hero-copy">优先直接读取Excel单元格，自动忽略“第…周带量”，只处理“第…周”工作表；多周分别建立数据卡，并按学生人数换算总克数和斤数。</p>
+        <h2>上传菜谱 Excel，生成每日食材用量</h2>
+        <p class="hero-copy">直接读取Excel单元格，自动忽略“第…周带量”。可指定只识别某一周；不填写周次时，自动统计文件内全部“第…周”工作表。</p>
         <div class="hero-tags">
+          <span class="hero-tag">GitHub版 V3</span>
           <span class="hero-tag">适配GitHub Pages</span>
           <span class="hero-tag">学生人数可修改</span>
           <span class="hero-tag">多周独立数据卡</span>
@@ -393,7 +393,7 @@
       </div>
       <aside class="flow-card" aria-label="使用流程">
         <h3>三步完成</h3>
-        <div class="flow-step"><div class="flow-index">1</div><div><strong>上传源文件</strong><span>推荐原始Excel，也可上传JPG或PNG。</span></div></div>
+        <div class="flow-step"><div class="flow-index">1</div><div><strong>选择统计范围</strong><span>输入指定周次，或留空统计全部周。</span></div></div>
         <div class="flow-step"><div class="flow-index">2</div><div><strong>分周核对</strong><span>点击周数据卡，逐项修改、增加或删除。</span></div></div>
         <div class="flow-step"><div class="flow-index">3</div><div><strong>生成Excel</strong><span>每周独立工作表，每天使用醒目分隔线。</span></div></div>
       </aside>
@@ -410,6 +410,7 @@
             <div class="form-grid">
               <div class="field"><label for="studentCount">学生人数</label><input id="studentCount" class="input parameter" type="number" min="1" max="5000" step="1" value="20"></div>
               <div class="field"><label for="jinGrams">1斤等于多少克</label><input id="jinGrams" class="input parameter" type="number" min="1" step="1" value="500"></div>
+              <div class="field wide"><label for="targetWeek">识别第几周（选填）</label><input id="targetWeek" class="input parameter" type="text" inputmode="text" placeholder="例如：第九周或9；留空则统计整个Excel"></div>
               <div class="field"><label for="weekStart">默认周一日期</label><input id="weekStart" class="input" type="date"></div>
               <div class="field"><label for="smallMilk">托小班奶量（升/人）</label><input id="smallMilk" class="input" type="number" min="0" step="0.01" value="0.09"></div>
               <div class="field"><label for="middleMilk">中班奶量（升/人）</label><input id="middleMilk" class="input" type="number" min="0" step="0.01" value="0.10"></div>
@@ -429,49 +430,14 @@
             <div class="button-row" style="margin-top:8px">
               <button id="removeExcelBtn" class="btn btn-soft" type="button" disabled>移除Excel数据</button>
             </div>
-
-            <div class="source-divider">或者上传菜谱图片</div>
-
-            <div id="dropzone" class="dropzone">
-              <input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp,image/*" aria-label="选择菜谱图片">
-              <div id="dropHint" class="drop-hint">
-                <div class="drop-icon">＋</div>
-                <strong>点击选择或拖入菜谱图片</strong>
-                <span>推荐JPG / PNG，文字越清晰识别越准确</span>
-              </div>
-              <img id="imagePreview" class="image-preview" alt="菜谱图片预览" hidden>
-            </div>
-            <div id="imageMeta" class="image-meta">尚未选择图片</div>
-            <div class="button-row">
-              <button id="recognizeBtn" class="btn btn-primary" type="button" disabled>识别图片文字</button>
-              <button id="removeImageBtn" class="btn btn-soft" type="button" disabled>移除图片</button>
-              <button id="sampleBtn" class="btn btn-soft" type="button">加载示例数据</button>
-            </div>
-            <div id="progressBox" class="progress-box" hidden>
-              <div class="progress-line"><div id="progressBar" class="progress-bar"></div></div>
-              <div class="progress-copy"><span id="progressStatus">准备识别</span><strong id="progressPercent">0%</strong></div>
-            </div>
-            <div class="tip">Excel会直接读取单元格，准确度明显高于图片OCR。若上传图片，生成前仍需核对日期、食材名称及每人克数。</div>
-          </div>
-        </article>
-
-        <article class="panel">
-          <div class="panel-head">
-            <div class="panel-title"><span class="step-badge">2</span><div><h3>识别文字</h3><p>可直接修改文字后重新解析</p></div></div>
-          </div>
-          <div class="panel-body">
-            <textarea id="ocrText" class="textarea" placeholder="上传图片并识别后，文字会显示在这里。也可以直接粘贴菜谱文字。"></textarea>
-            <div class="button-row">
-              <button id="parseBtn" class="btn btn-blue" type="button">解析为食材表</button>
-              <button id="clearTextBtn" class="btn btn-soft" type="button">清空文字</button>
-            </div>
+            <div class="tip">填写“识别第几周”后，仅处理指定周；留空则处理Excel内全部“第…周”工作表。“第…周带量”始终自动忽略。</div>
           </div>
         </article>
       </div>
 
       <article class="panel">
         <div class="panel-head">
-          <div class="panel-title"><span class="step-badge">3</span><div><h3>分周核对食材并生成</h3><p>每周独立数据卡；同日同食材自动合并</p></div></div>
+          <div class="panel-title"><span class="step-badge">2</span><div><h3>分周核对食材并生成</h3><p>每周独立数据卡；同日同食材自动合并</p></div></div>
         </div>
         <div class="panel-body">
           <div id="weekCards" class="week-cards" hidden></div>
@@ -496,7 +462,7 @@
               <thead><tr><th style="width:126px">日期</th><th style="width:118px">餐次</th><th style="width:170px">食材</th><th style="width:110px">每人(g)</th><th style="width:108px">总量(g)</th><th style="width:105px">总量(斤)</th><th style="width:82px">病号菜</th><th style="width:54px">删除</th></tr></thead>
               <tbody id="ingredientBody"></tbody>
             </table>
-            <div id="emptyState" class="empty-state"><strong>还没有食材数据</strong>上传原始Excel、识别菜谱图片，或点击“加载示例数据”。</div>
+            <div id="emptyState" class="empty-state"><strong>还没有食材数据</strong>选择统计范围后，上传原始Excel。</div>
           </div>
 
           <div class="export-box" style="margin-top:16px">
@@ -513,7 +479,7 @@
       </article>
     </section>
 
-    <div class="footer">Excel、图片和识别数据均在当前浏览器处理；网页可直接部署到GitHub Pages。</div>
+    <div class="footer">Excel和识别数据均在当前浏览器处理；网页可直接部署到GitHub Pages。</div>
   </main>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
@@ -530,14 +496,8 @@
         activeWeek: "",
         excelFile: null,
         ignoredSheets: [],
-        uploadedFile: null,
-        previewUrl: "",
-        imageDataUrl: "",
-        imageWidth: 0,
-        imageHeight: 0,
         downloadUrl: "",
         nextId: 1,
-        recognizing: false,
       };
 
       const sampleRows = [
@@ -709,17 +669,6 @@
         $("dateCount").textContent = `${dates.size}天`;
       }
 
-      function normalizeOcrText(text) {
-        const fullWidthDigits = "０１２３４５６７８９";
-        let normalized = String(text || "").replace(/[０-９]/g, (d) => String(fullWidthDigits.indexOf(d)));
-        normalized = normalized.replace(/ｇ/gi, "g").replace(/克/g, "g").replace(/[﹙〔【]/g, "（").replace(/[﹚〕】]/g, "）");
-        normalized = normalized.replace(/\b[lI]\s*g?8\b/gi, "1g");
-        normalized = normalized.replace(/(\d{1,3})\s*[sS](?=\s|[、，,；;）〉》]|$)/g, "$1g");
-        normalized = normalized.replace(/(\d{1,3})\s*8(?=\s|[、，,；;）〉》]|$)/g, (all, digits) => Number(digits) <= 200 ? `${digits}g` : all);
-        for (let i = 0; i < 3; i++) normalized = normalized.replace(/([\u3400-\u9fff])\s+(?=[\u3400-\u9fff])/g, "$1");
-        return normalized;
-      }
-
       function cleanIngredientName(name) {
         let clean = String(name || "").replace(/[\s:：,，、;；（）()]/g, "").replace(/^(约|大约|每人|左右)+/, "");
         clean = clean.replace(/(每人|左右|约)$/g, "");
@@ -728,84 +677,6 @@
         if (/^[A-Za-z·]+$/.test(clean)) return "";
         if (/\d/.test(clean)) return "";
         return clean;
-      }
-
-      function guessMeal(name, line) {
-        const text = `${name}${line}`;
-        if (/病号|清蒸肉丸/.test(text)) return { meal: "病号菜", sick: true };
-        if (/奶粉|饼干|曲奇|香酥条|早餐/.test(text)) return { meal: "早餐", sick: false };
-        if (/红提|青提|番茄|香蕉|芭蕉|水果/.test(text)) return { meal: "水果", sick: false };
-        if (/粥|发糕|刀切|核桃露|烤麸|芋艿|午点|玉米/.test(text)) return { meal: "午点", sick: false };
-        if (/汤|羹/.test(text)) return { meal: "午餐汤", sick: false };
-        if (/饭|面条|主食|荞麦|大米|小米/.test(text)) return { meal: "午餐主食", sick: false };
-        return { meal: "午餐菜", sick: false };
-      }
-
-      function parseOcrText() {
-        const raw = normalizeOcrText($("ocrText").value);
-        if (!raw.trim()) {
-          showToast("请先识别图片或粘贴菜谱文字");
-          return;
-        }
-        const lines = raw.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-        const fallback = validIsoDate($("weekStart").value) ? $("weekStart").value : getMonday();
-        const fallbackYear = Number(fallback.slice(0, 4));
-        const monday = new Date(`${fallback}T00:00:00`);
-        const weekdayOffsets = { "一": 0, "二": 1, "三": 2, "四": 3, "五": 4, "六": 5, "日": 6, "天": 6 };
-        let currentDate = fallback;
-        const extracted = [];
-        const imageWeek = "图片识别";
-
-        const addCandidate = (name, grams, line) => {
-          const ingredient = cleanIngredientName(name);
-          const amount = Number(grams);
-          if (!ingredient || !Number.isFinite(amount) || amount <= 0 || amount > 2000) return;
-          const guess = guessMeal(ingredient, line);
-          extracted.push(newRow({ week: imageWeek, date: currentDate, meal: guess.meal, ingredient, grams: amount, sick: guess.sick }));
-        };
-
-        for (const line of lines) {
-          const fullDate = line.match(/(20\d{2})\s*[年\/\.\-]\s*(\d{1,2})\s*[月\/\.\-]\s*(\d{1,2})/);
-          const shortDate = line.match(/(?:^|\D)(\d{1,2})\s*[\/\.\-]\s*(\d{1,2})(?:\D|$)/);
-          if (fullDate) {
-            const candidate = makeIsoDate(Number(fullDate[1]), Number(fullDate[2]), Number(fullDate[3]));
-            if (candidate && dateIsNear(candidate, fallback)) currentDate = candidate;
-          } else if (shortDate) {
-            const candidate = makeIsoDate(fallbackYear, Number(shortDate[1]), Number(shortDate[2]));
-            if (candidate && dateIsNear(candidate, fallback)) currentDate = candidate;
-          }
-          else {
-            const weekMatch = line.match(/(?:周|星期)([一二三四五六日天])/);
-            if (weekMatch) {
-              const d = new Date(monday);
-              d.setDate(d.getDate() + weekdayOffsets[weekMatch[1]]);
-              currentDate = formatDate(d);
-            }
-          }
-
-          const seenInLine = new Set();
-          const wholePattern = /(?:^|[\s，、；;])([\u3400-\u9fffA-Za-z·]{1,18})[（(]\s*(\d+(?:\.\d+)?)\s*g(?:\s*\/\s*人)?\s*[）)]/gi;
-          for (const match of line.matchAll(wholePattern)) {
-            const key = `${match[1]}|${match[2]}`;
-            if (!seenInLine.has(key)) { seenInLine.add(key); addCandidate(match[1], match[2], line); }
-          }
-          const componentPattern = /(?:^|[（(、，,；;：:\s])([\u3400-\u9fffA-Za-z·]{1,16})\s*(\d+(?:\.\d+)?)\s*g/gi;
-          for (const match of line.matchAll(componentPattern)) {
-            const key = `${match[1]}|${match[2]}`;
-            if (!seenInLine.has(key)) { seenInLine.add(key); addCandidate(match[1], match[2], line); }
-          }
-        }
-
-        if (!extracted.length) {
-          showToast("未自动提取到“食材＋克数”，请修改识别文字或手动添加行");
-          return;
-        }
-        state.activeWeek = imageWeek;
-        state.weekOrder = [imageWeek];
-        state.rows = mergeDuplicateRows(extracted);
-        renderRows();
-        document.querySelector(".table-wrap").scrollIntoView({ behavior: "smooth", block: "start" });
-        showToast(`已解析 ${state.rows.length} 项，请核对后生成Excel`);
       }
 
       function mergeDuplicateRows(inputRows = state.rows) {
@@ -827,163 +698,38 @@
         return [...map.values()].sort((a, b) => (weekIndex.get(a.week) ?? 999) - (weekIndex.get(b.week) ?? 999) || a.date.localeCompare(b.date) || (mealOrder[a.meal] ?? 99) - (mealOrder[b.meal] ?? 99) || a.ingredient.localeCompare(b.ingredient, "zh-CN"));
       }
 
-      function readAsDataUrl(file) {
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-      }
-
-      function loadImage(src) {
-        return new Promise((resolve, reject) => {
-          const image = new Image();
-          image.onload = () => resolve(image);
-          image.onerror = reject;
-          image.src = src;
-        });
-      }
-
-      async function prepareImageForExcel(dataUrl) {
-        const image = await loadImage(dataUrl);
-        const maxSide = 1800;
-        const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
-        const width = Math.max(1, Math.round(image.naturalWidth * scale));
-        const height = Math.max(1, Math.round(image.naturalHeight * scale));
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const context = canvas.getContext("2d");
-        context.fillStyle = "#ffffff";
-        context.fillRect(0, 0, width, height);
-        context.drawImage(image, 0, 0, width, height);
-        return { dataUrl: canvas.toDataURL("image/jpeg", .9), width, height };
-      }
-
-      async function prepareImageForOcr() {
-        const image = await loadImage(state.previewUrl || state.imageDataUrl);
-        const scale = Math.min(2, 3000 / Math.max(image.naturalWidth, image.naturalHeight));
-        const width = Math.max(1, Math.round(image.naturalWidth * scale));
-        const height = Math.max(1, Math.round(image.naturalHeight * scale));
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const context = canvas.getContext("2d", { willReadFrequently: true });
-        context.fillStyle = "#ffffff";
-        context.fillRect(0, 0, width, height);
-        context.drawImage(image, 0, 0, width, height);
-        const pixels = context.getImageData(0, 0, width, height);
-        for (let i = 0; i < pixels.data.length; i += 4) {
-          const gray = pixels.data[i] * .299 + pixels.data[i + 1] * .587 + pixels.data[i + 2] * .114;
-          const value = gray > 218 ? 255 : Math.max(0, Math.min(255, (gray - 128) * 1.65 + 128));
-          pixels.data[i] = value;
-          pixels.data[i + 1] = value;
-          pixels.data[i + 2] = value;
-        }
-        context.putImageData(pixels, 0, 0);
-        return canvas.toDataURL("image/png");
-      }
-
-      async function handleImage(file) {
-        if (!file || !file.type.startsWith("image/")) {
-          showToast("请选择JPG、PNG或浏览器支持的图片文件");
-          return;
-        }
-        if (file.size > 20 * 1024 * 1024) {
-          showToast("图片超过20MB，请先压缩后再上传");
-          return;
-        }
-        try {
-          const dataUrl = await readAsDataUrl(file);
-          const prepared = await prepareImageForExcel(dataUrl);
-          if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
-          state.uploadedFile = file;
-          state.previewUrl = URL.createObjectURL(file);
-          state.imageDataUrl = prepared.dataUrl;
-          state.imageWidth = prepared.width;
-          state.imageHeight = prepared.height;
-          $("imagePreview").src = state.previewUrl;
-          $("imagePreview").hidden = false;
-          $("dropHint").hidden = true;
-          $("imageMeta").textContent = `${file.name} · ${(file.size / 1024 / 1024).toFixed(2)}MB · ${prepared.width}×${prepared.height}px`;
-          $("recognizeBtn").disabled = false;
-          $("removeImageBtn").disabled = false;
-          showToast("图片已插入，可以开始识别");
-        } catch (error) {
-          console.error(error);
-          showToast("无法读取该图片，建议转换为JPG或PNG");
-        }
-      }
-
-      function removeImage() {
-        if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
-        state.uploadedFile = null;
-        state.previewUrl = "";
-        state.imageDataUrl = "";
-        state.imageWidth = 0;
-        state.imageHeight = 0;
-        $("imageInput").value = "";
-        $("imagePreview").src = "";
-        $("imagePreview").hidden = true;
-        $("dropHint").hidden = false;
-        $("imageMeta").textContent = "尚未选择图片";
-        $("recognizeBtn").disabled = true;
-        $("removeImageBtn").disabled = true;
-      }
-
-      function progressLabel(status) {
-        const labels = {
-          "loading tesseract core": "加载识别核心",
-          "initializing tesseract": "初始化识别器",
-          "loading language traineddata": "下载中文识别模型",
-          "initializing api": "准备中文识别",
-          "recognizing text": "正在识别文字",
-        };
-        return labels[status] || status || "正在处理";
-      }
-
-      async function recognizeImage() {
-        if (!state.uploadedFile || state.recognizing) return;
-        if (!window.Tesseract) {
-          showToast("识别组件尚未加载，请检查网络后刷新页面");
-          return;
-        }
-        state.recognizing = true;
-        $("recognizeBtn").disabled = true;
-        $("progressBox").hidden = false;
-        $("progressBar").style.width = "0%";
-        $("progressPercent").textContent = "0%";
-        try {
-          $("progressStatus").textContent = "优化图片清晰度";
-          const ocrImage = await prepareImageForOcr();
-          const result = await Tesseract.recognize(ocrImage, "chi_sim+eng", {
-            langPath: "https://tessdata.projectnaptha.com/4.0.0",
-            logger: (message) => {
-              const progress = Math.round((message.progress || 0) * 100);
-              $("progressBar").style.width = `${progress}%`;
-              $("progressPercent").textContent = `${progress}%`;
-              $("progressStatus").textContent = progressLabel(message.status);
-            },
-          });
-          $("ocrText").value = result.data.text || "";
-          $("progressBar").style.width = "100%";
-          $("progressPercent").textContent = "100%";
-          $("progressStatus").textContent = "识别完成";
-          parseOcrText();
-        } catch (error) {
-          console.error(error);
-          $("progressStatus").textContent = "识别失败";
-          showToast("图片识别失败，请检查网络，或在文字框中手动粘贴内容");
-        } finally {
-          state.recognizing = false;
-          $("recognizeBtn").disabled = !state.uploadedFile;
-        }
-      }
-
       function normalizedWeekSheetName(name) {
         const compact = String(name || "").replace(/\s+/g, "");
         return /^第[零〇一二三四五六七八九十百两\d]+周$/.test(compact) ? compact : "";
+      }
+
+      function chineseNumberToInteger(value) {
+        const text = String(value || "").trim();
+        if (/^\d+$/.test(text)) return Number(text);
+        if (!/^[零〇一二两三四五六七八九十百]+$/.test(text)) return Number.NaN;
+        const digits = { "零": 0, "〇": 0, "一": 1, "二": 2, "两": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9 };
+        let total = 0;
+        let current = 0;
+        for (const char of text) {
+          if (Object.prototype.hasOwnProperty.call(digits, char)) {
+            current = digits[char];
+          } else if (char === "十") {
+            total += (current || 1) * 10;
+            current = 0;
+          } else if (char === "百") {
+            total += (current || 1) * 100;
+            current = 0;
+          }
+        }
+        return total + current;
+      }
+
+      function weekNumberFromValue(value) {
+        let text = String(value || "").replace(/\s+/g, "");
+        if (!text) return Number.NaN;
+        text = text.replace(/^第/, "").replace(/周$/, "");
+        const number = chineseNumberToInteger(text);
+        return Number.isFinite(number) && number > 0 ? number : Number.NaN;
       }
 
       function cellText(cell) {
@@ -1159,16 +905,50 @@
           showToast("Excel文件超过30MB，请先精简后再上传");
           return;
         }
+        state.excelFile = file;
+        $("removeExcelBtn").disabled = false;
         $("excelMeta").textContent = "正在读取Excel，请稍候…";
         try {
           const workbook = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true, cellNF: true, cellText: true });
-          const matched = workbook.SheetNames.map((sheetName) => ({ sheetName, weekName: normalizedWeekSheetName(sheetName) })).filter((item) => item.weekName);
+          const allMatched = workbook.SheetNames.map((sheetName) => ({ sheetName, weekName: normalizedWeekSheetName(sheetName) })).filter((item) => item.weekName);
           const ignored = workbook.SheetNames.filter((sheetName) => /带量/.test(String(sheetName).replace(/\s+/g, "")));
-          if (!matched.length) {
+          state.ignoredSheets = ignored;
+          if (!allMatched.length) {
+            state.rows = [];
+            state.weekOrder = [];
+            state.activeWeek = "";
             $("excelMeta").textContent = `${file.name} · 未找到名称为“第…周”的工作表`;
+            renderRows();
             showToast("未找到“第一周、第二周……”这类工作表；带量表不会处理");
             return;
           }
+
+          const requestedText = $("targetWeek").value.trim();
+          let matched = allMatched;
+          if (requestedText) {
+            const requestedNumber = weekNumberFromValue(requestedText);
+            if (!Number.isFinite(requestedNumber)) {
+              state.rows = [];
+              state.weekOrder = [];
+              state.activeWeek = "";
+              $("excelMeta").textContent = `${file.name} · 周次格式不正确；可输入“第九周”或“9”`;
+              renderRows();
+              showToast("周次格式不正确，请输入“第九周”或数字“9”");
+              return;
+            }
+            matched = allMatched.filter((item) => weekNumberFromValue(item.weekName) === requestedNumber);
+            if (!matched.length) {
+              state.rows = [];
+              state.weekOrder = [];
+              state.activeWeek = "";
+              const available = allMatched.map((item) => item.weekName).join("、");
+              $("excelMeta").textContent = `${file.name} · 未找到第${requestedNumber}周；文件包含：${available}`;
+              renderRows();
+              showToast(`未找到第${requestedNumber}周，请检查输入周次`);
+              return;
+            }
+          }
+
           state.weekOrder = matched.map((item) => item.weekName);
           state.activeWeek = state.weekOrder[0];
           const allRows = [];
@@ -1183,8 +963,6 @@
             showToast("已找到周工作表，但未提取到食材和克数，请检查模板结构");
             return;
           }
-          state.excelFile = file;
-          state.ignoredSheets = ignored;
           state.rows = mergeDuplicateRows(allRows);
           syncWeeks();
           const earliest = state.rows.map((row) => row.date).filter(validIsoDate).sort()[0];
@@ -1192,10 +970,11 @@
           $("removeExcelBtn").disabled = false;
           const ignoredText = ignored.length ? `；已忽略：${ignored.join("、")}` : "";
           const failedText = failed.length ? `；未读取：${failed.join("、")}` : "";
-          $("excelMeta").textContent = `${file.name} · 已读取：${state.weekOrder.join("、")}${ignoredText}${failedText}`;
+          const rangeText = requestedText ? `指定周：${state.weekOrder.join("、")}` : `全部周：${state.weekOrder.join("、")}`;
+          $("excelMeta").textContent = `${file.name} · ${rangeText}${ignoredText}${failedText}`;
           renderRows();
           document.querySelector(".week-cards").scrollIntoView({ behavior: "smooth", block: "center" });
-          showToast(`Excel读取完成：${state.weekOrder.length}周，${state.rows.length}项食材`);
+          showToast(requestedText ? `指定周读取完成：${state.weekOrder[0]}，${state.rows.length}项食材` : `全部周读取完成：${state.weekOrder.length}周，${state.rows.length}项食材`);
         } catch (error) {
           console.error(error);
           $("excelMeta").textContent = `${file.name} · 读取失败`;
@@ -1471,19 +1250,6 @@
             });
           });
 
-          if (state.imageDataUrl) {
-            const imageSheet = workbook.addWorksheet(safeSheetName("原始图片", usedNames), { views: [{ showGridLines: false }] });
-            styleTitle(imageSheet, "H", "原始菜谱图片");
-            imageSheet.columns = Array.from({ length: 8 }, () => ({ width: 16 }));
-            imageSheet.getCell("A3").value = "图片文件";
-            imageSheet.getCell("B3").value = state.uploadedFile ? state.uploadedFile.name : "已插入图片";
-            imageSheet.getCell("A3").font = { name: "Microsoft YaHei", bold: true, color: { argb: colors.navy } };
-            imageSheet.getCell("B3").font = { name: "Microsoft YaHei", color: { argb: colors.ink } };
-            const imageId = workbook.addImage({ base64: state.imageDataUrl, extension: "jpeg" });
-            const scale = Math.min(1, 1100 / state.imageWidth, 900 / state.imageHeight);
-            imageSheet.addImage(imageId, { tl: { col: 0, row: 4 }, ext: { width: Math.round(state.imageWidth * scale), height: Math.round(state.imageHeight * scale) } });
-          }
-
           const buffer = await workbook.xlsx.writeBuffer();
           const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
           const weekLabel = weekNames.length === 1 ? weekNames[0] : `${weekNames[0]}至${weekNames[weekNames.length - 1]}`;
@@ -1512,18 +1278,8 @@
       $("jinGrams").addEventListener("input", updateComputedCells);
       $("excelInput").addEventListener("change", (event) => handleExcel(event.target.files[0]));
       $("removeExcelBtn").addEventListener("click", removeExcel);
-      $("imageInput").addEventListener("change", (event) => handleImage(event.target.files[0]));
-      $("recognizeBtn").addEventListener("click", recognizeImage);
-      $("removeImageBtn").addEventListener("click", removeImage);
-      $("parseBtn").addEventListener("click", parseOcrText);
-      $("clearTextBtn").addEventListener("click", () => { $("ocrText").value = ""; });
-      $("sampleBtn").addEventListener("click", () => {
-        $("weekStart").value = "2026-08-24";
-        state.weekOrder = ["第九周", "第十周"];
-        state.activeWeek = "第九周";
-        state.rows = sampleRows.map(([date, meal, ingredient, grams, source, sick]) => newRow({ week: date === "2026-08-24" ? "第九周" : "第十周", date, meal, ingredient, grams, sick }));
-        renderRows();
-        showToast("已加载第九周和第十周示例数据");
+      $("targetWeek").addEventListener("change", () => {
+        if (state.excelFile) handleExcel(state.excelFile);
       });
       $("addRowBtn").addEventListener("click", () => {
         if (!state.activeWeek) {
@@ -1596,13 +1352,8 @@
         renderRows();
       });
 
-      const dropzone = $("dropzone");
-      ["dragenter", "dragover"].forEach((type) => dropzone.addEventListener(type, (event) => { event.preventDefault(); dropzone.classList.add("dragover"); }));
-      ["dragleave", "drop"].forEach((type) => dropzone.addEventListener(type, (event) => { event.preventDefault(); dropzone.classList.remove("dragover"); }));
-      dropzone.addEventListener("drop", (event) => handleImage(event.dataTransfer.files[0]));
-
       window.addEventListener("load", () => {
-        const ready = Boolean(window.Tesseract && window.XLSX && window.ExcelJS);
+        const ready = Boolean(window.XLSX && window.ExcelJS);
         $("libraryDot").classList.add(ready ? "ready" : "error");
         $("libraryStatus").textContent = ready ? "在线组件已就绪" : "在线组件加载失败";
       });
