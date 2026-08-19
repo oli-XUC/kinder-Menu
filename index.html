@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#1f4e78">
   <title>幼儿园食材用量识别工具</title>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
   <style>
     :root {
@@ -188,6 +189,39 @@
     .image-preview { width: 100%; max-height: 390px; object-fit: contain; background: #f7fafc; }
     .image-meta { margin-top: 10px; color: var(--muted); font-size: 12px; word-break: break-all; }
 
+    .excel-upload-card {
+      margin-top: 16px;
+      padding: 15px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 14px;
+      align-items: center;
+      border: 1px solid #b9d9ee;
+      border-radius: 15px;
+      background: linear-gradient(135deg, #f5fbff, #eaf4fb);
+    }
+    .excel-upload-card strong { display: block; color: var(--navy); font-size: 14px; }
+    .excel-upload-card span { display: block; margin-top: 5px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+    .file-button { position: relative; overflow: hidden; }
+    .file-button input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .source-divider { margin: 16px 0 12px; display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 12px; font-weight: 700; }
+    .source-divider::before, .source-divider::after { content: ""; height: 1px; flex: 1; background: var(--line); }
+
+    .week-cards { display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 12px; margin-bottom: 4px; }
+    .week-card {
+      min-width: 150px;
+      padding: 12px 14px;
+      border: 1px solid #c9dce9;
+      border-radius: 13px;
+      text-align: left;
+      color: var(--ink);
+      background: #f8fbfd;
+    }
+    .week-card strong { display: block; color: var(--navy); font-size: 14px; }
+    .week-card span { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; white-space: nowrap; }
+    .week-card.active { color: #fff; border-color: var(--navy); background: var(--navy); box-shadow: 0 7px 18px rgba(31,78,120,.18); }
+    .week-card.active strong, .week-card.active span { color: #fff; }
+
     .button-row { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 14px; }
     .btn {
       min-height: 40px;
@@ -224,7 +258,7 @@
     .table-tools .button-row { margin: 0; }
     .table-note { color: var(--muted); font-size: 12px; }
     .table-wrap { overflow: auto; border: 1px solid var(--line); border-radius: 14px; max-height: 660px; background: #fff; }
-    table { width: 100%; min-width: 1160px; border-collapse: separate; border-spacing: 0; font-size: 12px; }
+    table { width: 100%; min-width: 900px; border-collapse: separate; border-spacing: 0; font-size: 12px; }
     th {
       position: sticky;
       top: 0;
@@ -239,6 +273,16 @@
     td { padding: 7px; border-bottom: 1px solid #e3edf5; background: #fff; vertical-align: middle; }
     tbody tr:nth-child(odd) td { background: #f7fbfe; }
     tbody tr.sick-row td { background: #fff4f1; }
+    tbody tr.day-divider td {
+      padding: 9px 12px;
+      color: #fff;
+      background: var(--navy) !important;
+      border-top: 4px solid #123653;
+      border-bottom: 2px solid #123653;
+      font-weight: 800;
+      letter-spacing: .02em;
+    }
+    tbody tr.day-end td { border-bottom: 3px solid #7ba7c9; }
     .cell-input, .cell-select {
       width: 100%;
       height: 34px;
@@ -312,6 +356,8 @@
       .panel-head { padding: 15px; }
       .export-box { grid-template-columns: 1fr; }
       .export-box .btn { width: 100%; }
+      .excel-upload-card { grid-template-columns: 1fr; }
+      .excel-upload-card .btn { width: 100%; }
       .button-row .btn { flex: 1 1 auto; }
       .stats { grid-template-columns: repeat(2, 1fr); }
     }
@@ -324,31 +370,32 @@
         <div class="brand-mark" aria-hidden="true">▦</div>
         <div>
           <h1>幼儿园食材用量识别工具</h1>
-          <p>菜谱图片识别 · 20人用量换算 · Excel生成</p>
+          <p>Excel精准读取 · 图片辅助识别 · 多周独立统计</p>
         </div>
       </div>
-      <div class="privacy-pill">图片仅在当前浏览器内处理</div>
+      <div class="privacy-pill">文件仅在当前浏览器内处理</div>
     </div>
   </header>
 
   <main class="page">
     <section class="hero">
       <div class="hero-main">
-        <p class="eyebrow">Menu Image → Purchase Workbook</p>
-        <h2>插入菜谱图片，核对一次，直接生成采购 Excel</h2>
-        <p class="hero-copy">支持中文菜谱图片识别，自动提取“食材＋克数”，按学生人数换算为总克数和斤数。导出的工作簿保持原模板结构，并新增“原始图片”工作表。</p>
+        <p class="eyebrow">Menu Workbook → Purchase Workbook</p>
+        <h2>上传菜谱 Excel 或图片，生成每日食材用量</h2>
+        <p class="hero-copy">优先直接读取Excel单元格，自动忽略“第…周带量”，只处理“第…周”工作表；多周分别建立数据卡，并按学生人数换算总克数和斤数。</p>
         <div class="hero-tags">
-          <span class="hero-tag">无需API密钥</span>
+          <span class="hero-tag">适配GitHub Pages</span>
           <span class="hero-tag">学生人数可修改</span>
+          <span class="hero-tag">多周独立数据卡</span>
           <span class="hero-tag">病号菜分开计算</span>
-          <span class="hero-tag">图片写入Excel</span>
+          <span class="hero-tag">每日明显分隔</span>
         </div>
       </div>
       <aside class="flow-card" aria-label="使用流程">
         <h3>三步完成</h3>
-        <div class="flow-step"><div class="flow-index">1</div><div><strong>上传图片</strong><span>建议使用清晰、正向的JPG或PNG。</span></div></div>
-        <div class="flow-step"><div class="flow-index">2</div><div><strong>识别并核对</strong><span>OCR结果可逐行修改、增加和删除。</span></div></div>
-        <div class="flow-step"><div class="flow-index">3</div><div><strong>生成Excel</strong><span>自动汇总正常餐、病号菜和原始图片。</span></div></div>
+        <div class="flow-step"><div class="flow-index">1</div><div><strong>上传源文件</strong><span>推荐原始Excel，也可上传JPG或PNG。</span></div></div>
+        <div class="flow-step"><div class="flow-index">2</div><div><strong>分周核对</strong><span>点击周数据卡，逐项修改、增加或删除。</span></div></div>
+        <div class="flow-step"><div class="flow-index">3</div><div><strong>生成Excel</strong><span>每周独立工作表，每天使用醒目分隔线。</span></div></div>
       </aside>
     </section>
 
@@ -356,7 +403,7 @@
       <div class="stack">
         <article class="panel">
           <div class="panel-head">
-            <div class="panel-title"><span class="step-badge">1</span><div><h3>参数与菜谱图片</h3><p>黄色输入框会参与全部计算</p></div></div>
+            <div class="panel-title"><span class="step-badge">1</span><div><h3>参数与源文件</h3><p>黄色输入框会参与全部计算</p></div></div>
             <span class="online-status"><span id="libraryDot" class="status-dot"></span><span id="libraryStatus">正在检查在线组件</span></span>
           </div>
           <div class="panel-body">
@@ -369,7 +416,23 @@
               <div class="field"><label for="schoolName">学校名称（选填）</label><input id="schoolName" class="input" type="text" placeholder="幼儿园名称"></div>
             </div>
 
-            <div id="dropzone" class="dropzone" style="margin-top:16px">
+            <div class="excel-upload-card">
+              <div>
+                <strong>推荐：上传原始 Excel（识别最准确）</strong>
+                <span>仅读取名称严格为“第…周”的工作表；“第…周带量”等工作表自动忽略。支持一个文件包含多周。</span>
+              </div>
+              <label class="btn btn-primary file-button">选择Excel
+                <input id="excelInput" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" aria-label="选择Excel菜谱">
+              </label>
+            </div>
+            <div id="excelMeta" class="image-meta">尚未选择Excel文件</div>
+            <div class="button-row" style="margin-top:8px">
+              <button id="removeExcelBtn" class="btn btn-soft" type="button" disabled>移除Excel数据</button>
+            </div>
+
+            <div class="source-divider">或者上传菜谱图片</div>
+
+            <div id="dropzone" class="dropzone">
               <input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp,image/*" aria-label="选择菜谱图片">
               <div id="dropHint" class="drop-hint">
                 <div class="drop-icon">＋</div>
@@ -388,7 +451,7 @@
               <div class="progress-line"><div id="progressBar" class="progress-bar"></div></div>
               <div class="progress-copy"><span id="progressStatus">准备识别</span><strong id="progressPercent">0%</strong></div>
             </div>
-            <div class="tip">OCR识别会受到图片清晰度、表格线和字体影响。生成前请重点核对日期、食材名称及每人克数。</div>
+            <div class="tip">Excel会直接读取单元格，准确度明显高于图片OCR。若上传图片，生成前仍需核对日期、食材名称及每人克数。</div>
           </div>
         </article>
 
@@ -408,9 +471,10 @@
 
       <article class="panel">
         <div class="panel-head">
-          <div class="panel-title"><span class="step-badge">3</span><div><h3>核对食材并生成</h3><p>同日同食材在导出时自动合并</p></div></div>
+          <div class="panel-title"><span class="step-badge">3</span><div><h3>分周核对食材并生成</h3><p>每周独立数据卡；同日同食材自动合并</p></div></div>
         </div>
         <div class="panel-body">
+          <div id="weekCards" class="week-cards" hidden></div>
           <div class="stats">
             <div class="stat"><span>当前明细</span><strong id="rowCount">0项</strong></div>
             <div class="stat"><span>正常餐合计</span><strong id="normalTotal">0.000斤</strong></div>
@@ -422,23 +486,23 @@
             <div class="button-row">
               <button id="addRowBtn" class="btn btn-soft" type="button">＋ 添加一行</button>
               <button id="mergeBtn" class="btn btn-soft" type="button">合并同日同食材</button>
-              <button id="clearRowsBtn" class="btn btn-danger" type="button">清空表格</button>
+              <button id="clearRowsBtn" class="btn btn-danger" type="button">清空当前周</button>
             </div>
             <div class="table-note">勾选“病号菜”后不会计入正常餐汇总</div>
           </div>
 
           <div class="table-wrap">
             <table aria-label="食材用量明细">
-              <thead><tr><th style="width:126px">日期</th><th style="width:118px">餐次</th><th style="width:150px">食材</th><th style="width:110px">每人(g)</th><th style="width:108px">总量(g)</th><th style="width:105px">总量(斤)</th><th style="width:82px">病号菜</th><th style="width:260px">来源/说明</th><th style="width:54px">删除</th></tr></thead>
+              <thead><tr><th style="width:126px">日期</th><th style="width:118px">餐次</th><th style="width:170px">食材</th><th style="width:110px">每人(g)</th><th style="width:108px">总量(g)</th><th style="width:105px">总量(斤)</th><th style="width:82px">病号菜</th><th style="width:54px">删除</th></tr></thead>
               <tbody id="ingredientBody"></tbody>
             </table>
-            <div id="emptyState" class="empty-state"><strong>还没有食材数据</strong>上传菜谱图片识别，或点击“加载示例数据”。</div>
+            <div id="emptyState" class="empty-state"><strong>还没有食材数据</strong>上传原始Excel、识别菜谱图片，或点击“加载示例数据”。</div>
           </div>
 
           <div class="export-box" style="margin-top:16px">
             <div>
-              <h4>生成同结构 Excel 工作簿</h4>
-              <p>包含“每日汇总、食材明细、病号菜、原始图片”四张工作表。图片会随Excel一起保存。</p>
+              <h4>生成分周 Excel 工作簿</h4>
+              <p>每周建立独立工作表；每天按日期分组并使用醒目色带、粗线和当日合计区分。不会输出“菜品来源说明”列。</p>
             </div>
             <div class="export-actions">
               <button id="exportBtn" class="btn btn-green" type="button" disabled>生成并下载 Excel</button>
@@ -449,7 +513,7 @@
       </article>
     </section>
 
-    <div class="footer">图片和数据不会上传到本工具的服务器；在线连接仅用于加载识别和Excel组件。</div>
+    <div class="footer">Excel、图片和识别数据均在当前浏览器处理；网页可直接部署到GitHub Pages。</div>
   </main>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
@@ -462,6 +526,10 @@
       const mealOrder = Object.fromEntries(mealOptions.map((v, i) => [v, i]));
       const state = {
         rows: [],
+        weekOrder: [],
+        activeWeek: "",
+        excelFile: null,
+        ignoredSheets: [],
         uploadedFile: null,
         previewUrl: "",
         imageDataUrl: "",
@@ -547,8 +615,9 @@
         return ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][new Date(`${isoDate}T00:00:00`).getDay()];
       }
 
-      function newRow({ date, meal = "未分类", ingredient = "", grams = 0, source = "", sick = false }) {
-        return { id: state.nextId++, date: validIsoDate(date) ? date : $("weekStart").value, meal, ingredient, grams: Number(grams) || 0, source, sick: Boolean(sick) };
+      function newRow({ week = "", date, meal = "未分类", ingredient = "", grams = 0, sick = false }) {
+        const fallbackWeek = state.activeWeek || "手动录入";
+        return { id: state.nextId++, week: String(week || fallbackWeek), date: validIsoDate(date) ? date : $("weekStart").value, meal, ingredient, grams: Number(grams) || 0, sick: Boolean(sick) };
       }
 
       function escapeHtml(value) {
@@ -568,11 +637,42 @@
         showToast.timer = setTimeout(() => toast.classList.remove("show"), 2800);
       }
 
+      function weekRows(week = state.activeWeek) {
+        return state.rows.filter((row) => row.week === week);
+      }
+
+      function syncWeeks() {
+        const found = [];
+        for (const name of state.weekOrder.concat(state.rows.map((row) => row.week))) {
+          if (name && !found.includes(name) && state.rows.some((row) => row.week === name)) found.push(name);
+        }
+        state.weekOrder = found;
+        if (!state.activeWeek || !state.weekOrder.includes(state.activeWeek)) state.activeWeek = state.weekOrder[0] || "";
+      }
+
+      function renderWeekCards() {
+        syncWeeks();
+        const box = $("weekCards");
+        box.hidden = state.weekOrder.length === 0;
+        box.innerHTML = state.weekOrder.map((week) => {
+          const rows = weekRows(week);
+          const dates = new Set(rows.map((row) => row.date).filter(validIsoDate));
+          return `<button class="week-card${week === state.activeWeek ? " active" : ""}" type="button" data-week="${escapeHtml(week)}"><strong>${escapeHtml(week)}</strong><span>${dates.size}天 · ${rows.length}项食材</span></button>`;
+        }).join("");
+      }
+
       function renderRows() {
+        renderWeekCards();
         const body = $("ingredientBody");
-        body.innerHTML = state.rows.map((row) => {
+        const visible = weekRows().slice().sort((a, b) => a.date.localeCompare(b.date) || (mealOrder[a.meal] ?? 99) - (mealOrder[b.meal] ?? 99) || a.ingredient.localeCompare(b.ingredient, "zh-CN"));
+        let previousDate = "";
+        body.innerHTML = visible.map((row, index) => {
           const options = mealOptions.map((meal) => `<option value="${meal}"${row.meal === meal ? " selected" : ""}>${meal}</option>`).join("");
-          return `<tr data-id="${row.id}" class="${row.sick ? "sick-row" : ""}">
+          const dayStart = row.date !== previousDate;
+          const dayEnd = !visible[index + 1] || visible[index + 1].date !== row.date;
+          previousDate = row.date;
+          const divider = dayStart ? `<tr class="day-divider"><td colspan="8">${escapeHtml(row.date)}　${escapeHtml(weekdayName(row.date))}</td></tr>` : "";
+          return `${divider}<tr data-id="${row.id}" class="${row.sick ? "sick-row " : ""}${dayEnd ? "day-end" : ""}">
             <td><input class="cell-input" data-key="date" type="date" value="${escapeHtml(row.date)}"></td>
             <td><select class="cell-select" data-key="meal">${options}</select></td>
             <td><input class="cell-input" data-key="ingredient" type="text" value="${escapeHtml(row.ingredient)}" placeholder="食材名称"></td>
@@ -580,11 +680,10 @@
             <td class="number-cell" data-total-g>${totalGrams(row).toFixed(1)}</td>
             <td class="number-cell" data-total-jin>${totalJin(row).toFixed(3)}</td>
             <td class="check-cell"><input data-key="sick" type="checkbox" ${row.sick ? "checked" : ""} aria-label="标记为病号菜"></td>
-            <td><input class="cell-input" data-key="source" type="text" value="${escapeHtml(row.source)}" placeholder="菜品或识别原文"></td>
             <td class="check-cell"><button class="row-delete" type="button" data-delete aria-label="删除这一行">×</button></td>
           </tr>`;
         }).join("");
-        $("emptyState").hidden = state.rows.length > 0;
+        $("emptyState").hidden = visible.length > 0;
         $("exportBtn").disabled = state.rows.length === 0;
         updateStats();
       }
@@ -600,10 +699,11 @@
       }
 
       function updateStats() {
-        const normal = state.rows.filter((row) => !row.sick).reduce((sum, row) => sum + totalJin(row), 0);
-        const sick = state.rows.filter((row) => row.sick).reduce((sum, row) => sum + totalJin(row), 0);
-        const dates = new Set(state.rows.map((row) => row.date).filter(validIsoDate));
-        $("rowCount").textContent = `${state.rows.length}项`;
+        const visible = weekRows();
+        const normal = visible.filter((row) => !row.sick).reduce((sum, row) => sum + totalJin(row), 0);
+        const sick = visible.filter((row) => row.sick).reduce((sum, row) => sum + totalJin(row), 0);
+        const dates = new Set(visible.map((row) => row.date).filter(validIsoDate));
+        $("rowCount").textContent = `${visible.length}项`;
         $("normalTotal").textContent = `${normal.toFixed(3)}斤`;
         $("sickTotal").textContent = `${sick.toFixed(3)}斤`;
         $("dateCount").textContent = `${dates.size}天`;
@@ -654,13 +754,14 @@
         const weekdayOffsets = { "一": 0, "二": 1, "三": 2, "四": 3, "五": 4, "六": 5, "日": 6, "天": 6 };
         let currentDate = fallback;
         const extracted = [];
+        const imageWeek = "图片识别";
 
         const addCandidate = (name, grams, line) => {
           const ingredient = cleanIngredientName(name);
           const amount = Number(grams);
           if (!ingredient || !Number.isFinite(amount) || amount <= 0 || amount > 2000) return;
           const guess = guessMeal(ingredient, line);
-          extracted.push(newRow({ date: currentDate, meal: guess.meal, ingredient, grams: amount, source: line.slice(0, 80), sick: guess.sick }));
+          extracted.push(newRow({ week: imageWeek, date: currentDate, meal: guess.meal, ingredient, grams: amount, sick: guess.sick }));
         };
 
         for (const line of lines) {
@@ -699,6 +800,8 @@
           showToast("未自动提取到“食材＋克数”，请修改识别文字或手动添加行");
           return;
         }
+        state.activeWeek = imageWeek;
+        state.weekOrder = [imageWeek];
         state.rows = mergeDuplicateRows(extracted);
         renderRows();
         document.querySelector(".table-wrap").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -710,18 +813,18 @@
         for (const row of inputRows) {
           const ingredient = String(row.ingredient || "").trim();
           if (!ingredient) continue;
-          const key = `${row.date}|${row.sick ? 1 : 0}|${ingredient}`;
+          const key = `${row.week}|${row.date}|${row.sick ? 1 : 0}|${ingredient}`;
           if (!map.has(key)) {
-            map.set(key, newRow({ ...row, ingredient, source: row.source || "" }));
+            map.set(key, newRow({ ...row, ingredient }));
           } else {
             const current = map.get(key);
             current.grams += Number(row.grams) || 0;
             const meals = new Set(String(current.meal).split("+").concat(String(row.meal).split("+")));
             current.meal = [...meals].sort((a, b) => (mealOrder[a] ?? 99) - (mealOrder[b] ?? 99)).join("+");
-            if (row.source && !current.source.includes(row.source)) current.source = `${current.source}；${row.source}`.replace(/^；/, "").slice(0, 180);
           }
         }
-        return [...map.values()].sort((a, b) => a.date.localeCompare(b.date) || (mealOrder[a.meal] ?? 99) - (mealOrder[b.meal] ?? 99) || a.ingredient.localeCompare(b.ingredient, "zh-CN"));
+        const weekIndex = new Map(state.weekOrder.map((week, index) => [week, index]));
+        return [...map.values()].sort((a, b) => (weekIndex.get(a.week) ?? 999) - (weekIndex.get(b.week) ?? 999) || a.date.localeCompare(b.date) || (mealOrder[a.meal] ?? 99) - (mealOrder[b.meal] ?? 99) || a.ingredient.localeCompare(b.ingredient, "zh-CN"));
       }
 
       function readAsDataUrl(file) {
@@ -878,6 +981,240 @@
         }
       }
 
+      function normalizedWeekSheetName(name) {
+        const compact = String(name || "").replace(/\s+/g, "");
+        return /^第[零〇一二三四五六七八九十百两\d]+周$/.test(compact) ? compact : "";
+      }
+
+      function cellText(cell) {
+        if (!cell) return "";
+        if (cell.v instanceof Date && !Number.isNaN(cell.v.getTime())) return formatDate(cell.v);
+        if (cell.w !== undefined && cell.w !== null) return String(cell.w).trim();
+        if (cell.v === undefined || cell.v === null) return "";
+        return String(cell.v).trim();
+      }
+
+      function worksheetGrid(worksheet) {
+        if (!worksheet || !worksheet["!ref"]) return [];
+        const range = XLSX.utils.decode_range(worksheet["!ref"]);
+        const rowCount = range.e.r - range.s.r + 1;
+        const columnCount = range.e.c - range.s.c + 1;
+        const grid = Array.from({ length: rowCount }, () => Array(columnCount).fill(""));
+        for (let row = range.s.r; row <= range.e.r; row++) {
+          for (let column = range.s.c; column <= range.e.c; column++) {
+            const address = XLSX.utils.encode_cell({ r: row, c: column });
+            grid[row - range.s.r][column - range.s.c] = cellText(worksheet[address]);
+          }
+        }
+        for (const merge of worksheet["!merges"] || []) {
+          const sourceAddress = XLSX.utils.encode_cell({ r: merge.s.r, c: merge.s.c });
+          const value = cellText(worksheet[sourceAddress]);
+          if (!value) continue;
+          for (let row = merge.s.r; row <= merge.e.r; row++) {
+            for (let column = merge.s.c; column <= merge.e.c; column++) {
+              if (row >= range.s.r && column >= range.s.c && row <= range.e.r && column <= range.e.c) {
+                grid[row - range.s.r][column - range.s.c] = value;
+              }
+            }
+          }
+        }
+        return grid;
+      }
+
+      function normalizeHeader(value) {
+        return String(value || "").replace(/[\s　]+/g, "").replace(/[：:]/g, "");
+      }
+
+      function findMenuHeaderRow(grid) {
+        const limit = Math.min(grid.length, 35);
+        let best = { index: -1, score: 0 };
+        for (let index = 0; index < limit; index++) {
+          const values = grid[index].map(normalizeHeader);
+          const combined = values.join("|");
+          let score = 0;
+          if (/星期|日期/.test(combined)) score += 3;
+          for (const pattern of [/早餐/, /主食/, /菜/, /汤/, /水果/, /午点/, /病号/]) {
+            if (pattern.test(combined)) score += 1;
+          }
+          if (score > best.score) best = { index, score };
+        }
+        return best.score >= 5 ? best.index : -1;
+      }
+
+      function mealForHeader(header) {
+        const text = normalizeHeader(header);
+        if (/年龄|龄组|星期|日期/.test(text)) return "";
+        if (/病号/.test(text)) return "病号菜";
+        if (/早餐|早点/.test(text)) return "早餐";
+        if (/午点|下午点心/.test(text)) return "午点";
+        if (/水果/.test(text)) return "水果";
+        if (/搭配/.test(text)) return "搭配";
+        if (/主食/.test(text)) return "午餐主食";
+        if (/汤|羹/.test(text)) return "午餐汤";
+        if (/菜/.test(text)) return "午餐菜";
+        return "";
+      }
+
+      function inferWorkbookYear(grid) {
+        const sample = grid.slice(0, 30).flat().join(" ");
+        const match = sample.match(/(20\d{2})\s*(?:年|[\/\.\-])/);
+        return match ? Number(match[1]) : Number(($("weekStart").value || getMonday()).slice(0, 4));
+      }
+
+      function parseExcelDate(value, fallbackYear, previousDate = "") {
+        const text = String(value || "").trim();
+        if (validIsoDate(text)) return text;
+        let match = text.match(/(20\d{2})\s*(?:年|[\/\.\-])\s*(\d{1,2})\s*(?:月|[\/\.\-])\s*(\d{1,2})/);
+        if (match) return makeIsoDate(Number(match[1]), Number(match[2]), Number(match[3]));
+        match = text.match(/(?:^|\D)(\d{1,2})\s*(?:月|[\/\.\-])\s*(\d{1,2})(?:日|\D|$)/);
+        if (!match) return "";
+        const month = Number(match[1]);
+        const day = Number(match[2]);
+        let year = fallbackYear;
+        if (previousDate) {
+          const previousMonth = Number(previousDate.slice(5, 7));
+          const previousYear = Number(previousDate.slice(0, 4));
+          year = previousYear + (previousMonth >= 11 && month <= 2 ? 1 : 0);
+        }
+        return makeIsoDate(year, month, day);
+      }
+
+      function dishTitleFromCell(text) {
+        const first = String(text || "").split(/[（(\n\r]/)[0];
+        return cleanIngredientName(first.replace(/^(早餐|午餐|午点|水果|搭配|病号菜)+/, ""));
+      }
+
+      function ingredientPairsFromCell(value) {
+        const text = String(value || "")
+          .replace(/ｇ/gi, "g")
+          .replace(/克/g, "g")
+          .replace(/[﹙〔【]/g, "（")
+          .replace(/[﹚〕】]/g, "）");
+        const dishTitle = dishTitleFromCell(text);
+        const results = [];
+        const seen = new Set();
+        for (const match of text.matchAll(/(\d+(?:\.\d+)?)\s*g/gi)) {
+          const grams = Number(match[1]);
+          if (!Number.isFinite(grams) || grams <= 0 || grams > 2000) continue;
+          const prefix = text.slice(Math.max(0, match.index - 45), match.index).replace(/[\s　]+/g, "");
+          const nameMatch = prefix.match(/([\u3400-\u9fff·]{1,20})$/);
+          let ingredient = cleanIngredientName(nameMatch ? nameMatch[1] : dishTitle);
+          ingredient = ingredient.replace(/^(约|每人|左右)+/, "").replace(/(约|每人|左右)+$/, "");
+          if (!ingredient || /^(托小班|中班|大班|小班|人)$/.test(ingredient)) ingredient = dishTitle;
+          if (!ingredient) continue;
+          const key = `${ingredient}|${grams}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            results.push({ ingredient, grams });
+          }
+        }
+        return results;
+      }
+
+      function parseWeekWorksheet(worksheet, weekName) {
+        const grid = worksheetGrid(worksheet);
+        const headerIndex = findMenuHeaderRow(grid);
+        if (headerIndex < 0) return { rows: [], error: "未找到菜谱表头" };
+        const headers = grid[headerIndex];
+        let dateColumn = headers.findIndex((value) => /星期|日期/.test(normalizeHeader(value)));
+        if (dateColumn < 0) dateColumn = 0;
+        const mealColumns = headers.map(mealForHeader);
+        const fallbackYear = inferWorkbookYear(grid);
+        const extracted = [];
+        let currentDate = "";
+
+        for (let rowIndex = headerIndex + 1; rowIndex < grid.length; rowIndex++) {
+          const row = grid[rowIndex] || [];
+          const parsedDate = parseExcelDate(row[dateColumn], fallbackYear, currentDate);
+          if (parsedDate) currentDate = parsedDate;
+          if (!currentDate) continue;
+          for (let column = 0; column < row.length; column++) {
+            const meal = mealColumns[column];
+            if (!meal) continue;
+            const value = row[column];
+            if (!String(value || "").trim()) continue;
+            const pairs = ingredientPairsFromCell(value);
+            for (const pair of pairs) {
+              extracted.push(newRow({
+                week: weekName,
+                date: currentDate,
+                meal,
+                ingredient: pair.ingredient,
+                grams: pair.grams,
+                sick: meal === "病号菜",
+              }));
+            }
+          }
+        }
+        return { rows: mergeDuplicateRows(extracted), error: "" };
+      }
+
+      async function handleExcel(file) {
+        if (!file) return;
+        if (!window.XLSX) {
+          showToast("Excel读取组件尚未加载，请检查网络后刷新页面");
+          return;
+        }
+        if (file.size > 30 * 1024 * 1024) {
+          showToast("Excel文件超过30MB，请先精简后再上传");
+          return;
+        }
+        $("excelMeta").textContent = "正在读取Excel，请稍候…";
+        try {
+          const workbook = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true, cellNF: true, cellText: true });
+          const matched = workbook.SheetNames.map((sheetName) => ({ sheetName, weekName: normalizedWeekSheetName(sheetName) })).filter((item) => item.weekName);
+          const ignored = workbook.SheetNames.filter((sheetName) => /带量/.test(String(sheetName).replace(/\s+/g, "")));
+          if (!matched.length) {
+            $("excelMeta").textContent = `${file.name} · 未找到名称为“第…周”的工作表`;
+            showToast("未找到“第一周、第二周……”这类工作表；带量表不会处理");
+            return;
+          }
+          state.weekOrder = matched.map((item) => item.weekName);
+          state.activeWeek = state.weekOrder[0];
+          const allRows = [];
+          const failed = [];
+          for (const item of matched) {
+            const result = parseWeekWorksheet(workbook.Sheets[item.sheetName], item.weekName);
+            if (result.rows.length) allRows.push(...result.rows);
+            else failed.push(`${item.weekName}（${result.error || "未提取到食材"}）`);
+          }
+          if (!allRows.length) {
+            $("excelMeta").textContent = `${file.name} · 找到${matched.length}周，但未读取到“食材＋克数”`;
+            showToast("已找到周工作表，但未提取到食材和克数，请检查模板结构");
+            return;
+          }
+          state.excelFile = file;
+          state.ignoredSheets = ignored;
+          state.rows = mergeDuplicateRows(allRows);
+          syncWeeks();
+          const earliest = state.rows.map((row) => row.date).filter(validIsoDate).sort()[0];
+          if (earliest) $("weekStart").value = earliest;
+          $("removeExcelBtn").disabled = false;
+          const ignoredText = ignored.length ? `；已忽略：${ignored.join("、")}` : "";
+          const failedText = failed.length ? `；未读取：${failed.join("、")}` : "";
+          $("excelMeta").textContent = `${file.name} · 已读取：${state.weekOrder.join("、")}${ignoredText}${failedText}`;
+          renderRows();
+          document.querySelector(".week-cards").scrollIntoView({ behavior: "smooth", block: "center" });
+          showToast(`Excel读取完成：${state.weekOrder.length}周，${state.rows.length}项食材`);
+        } catch (error) {
+          console.error(error);
+          $("excelMeta").textContent = `${file.name} · 读取失败`;
+          showToast("Excel读取失败，请确认文件未加密且格式为xlsx或xls");
+        }
+      }
+
+      function removeExcel() {
+        state.excelFile = null;
+        state.ignoredSheets = [];
+        state.rows = [];
+        state.weekOrder = [];
+        state.activeWeek = "";
+        $("excelInput").value = "";
+        $("excelMeta").textContent = "尚未选择Excel文件";
+        $("removeExcelBtn").disabled = true;
+        renderRows();
+      }
+
       function argb(hex) { return `FF${hex.replace("#", "").toUpperCase()}`; }
       const colors = { navy: argb("1F4E78"), blue: argb("5B9BD5"), pale: argb("EAF2F8"), line: argb("D9E2F3"), yellow: argb("FFF2CC"), green: argb("D9EAD3"), peach: argb("FCE4D6"), white: "FFFFFFFF", ink: argb("17324D") };
       const thinBorder = { top: { style: "thin", color: { argb: colors.line } }, left: { style: "thin", color: { argb: colors.line } }, bottom: { style: "thin", color: { argb: colors.line } }, right: { style: "thin", color: { argb: colors.line } } };
@@ -928,15 +1265,156 @@
         return mergeDuplicateRows(state.rows).filter((row) => row.ingredient && row.grams > 0 && validIsoDate(row.date));
       }
 
+      function safeSheetName(name, usedNames) {
+        const base = String(name || "数据卡").replace(/[\\/\?\*\[\]:]/g, "-").slice(0, 31) || "数据卡";
+        let candidate = base;
+        let suffix = 2;
+        while (usedNames.has(candidate)) {
+          const tail = `-${suffix++}`;
+          candidate = `${base.slice(0, 31 - tail.length)}${tail}`;
+        }
+        usedNames.add(candidate);
+        return candidate;
+      }
+
+      function mediumBorder(color = colors.navy) {
+        return {
+          top: { style: "medium", color: { argb: color } },
+          left: { style: "medium", color: { argb: color } },
+          bottom: { style: "medium", color: { argb: color } },
+          right: { style: "medium", color: { argb: color } },
+        };
+      }
+
+      function fillParameterRow(ws, students, oneJin, smallMilk, middleMilk) {
+        ws.getRow(3).values = ["学生人数", students, "1斤克数", oneJin, "托小班每人奶量(L)", smallMilk, "中班每人奶量(L)", middleMilk];
+        for (const col of [1, 3, 5, 7]) {
+          const cell = ws.getRow(3).getCell(col);
+          cell.font = { name: "Microsoft YaHei", bold: true, color: { argb: colors.navy } };
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: argb("D9EAF7") } };
+          cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+          cell.border = thinBorder;
+        }
+        for (const col of [2, 4, 6, 8]) {
+          const cell = ws.getRow(3).getCell(col);
+          cell.font = { name: "Microsoft YaHei", bold: true, color: { argb: argb("7F6000") } };
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: colors.yellow } };
+          cell.alignment = { horizontal: "center", vertical: "middle" };
+          cell.border = thinBorder;
+        }
+        ws.getRow(3).height = 28;
+      }
+
+      function addWeekDataCard(workbook, week, weekData, options, usedNames) {
+        const { students, oneJin, smallMilk, middleMilk, titlePrefix } = options;
+        const ws = workbook.addWorksheet(safeSheetName(week, usedNames), { views: [{ showGridLines: false, state: "frozen", ySplit: 4 }] });
+        styleTitle(ws, "I", `${titlePrefix}${week}｜每天食材用量统计（${students}名学生）`);
+        fillParameterRow(ws, students, oneJin, smallMilk, middleMilk);
+        styleNote(ws, "A4:I4", "每天使用深蓝色日期栏、表头、当日合计和空白行分隔；当日合计不包含病号菜。黄色参数可修改。", colors.pale, colors.navy);
+        ws.getRow(4).height = 28;
+        ws.columns = [{ width: 15 }, { width: 10 }, { width: 16 }, { width: 24 }, { width: 16 }, { width: 13 }, { width: 16 }, { width: 15 }, { width: 12 }];
+
+        const byDate = new Map();
+        for (const item of weekData) {
+          if (!byDate.has(item.date)) byDate.set(item.date, []);
+          byDate.get(item.date).push(item);
+        }
+        const dateEntries = [...byDate.entries()].sort(([a], [b]) => a.localeCompare(b));
+        let cursor = 6;
+        for (const [date, items] of dateEntries) {
+          const normalItems = items.filter((item) => !item.sick);
+          const sickItems = items.filter((item) => item.sick);
+          const dayTotalG = normalItems.reduce((sum, item) => sum + item.grams * students, 0);
+          const dayTotalJin = dayTotalG / oneJin;
+
+          ws.mergeCells(`A${cursor}:I${cursor}`);
+          const dayCell = ws.getCell(`A${cursor}`);
+          dayCell.value = `${date}　${weekdayName(date)}　｜　正常餐 ${normalItems.length} 项 · ${dayTotalJin.toFixed(3)}斤${sickItems.length ? `　｜　病号菜 ${sickItems.length} 项` : ""}`;
+          dayCell.font = { name: "Microsoft YaHei", size: 12, bold: true, color: { argb: colors.white } };
+          dayCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: colors.navy } };
+          dayCell.alignment = { vertical: "middle", horizontal: "left" };
+          dayCell.border = mediumBorder();
+          ws.getRow(cursor).height = 27;
+          cursor += 1;
+
+          ws.getRow(cursor).values = ["日期", "星期", "餐次", "食材", "每人用量(g)", "学生人数", "总量(g)", "总量(斤)", "病号菜"];
+          styleHeader(ws.getRow(cursor));
+          const headerRow = cursor;
+          cursor += 1;
+          const firstItemRow = cursor;
+
+          for (const item of items) {
+            const rowNumber = cursor++;
+            ws.getCell(`A${rowNumber}`).value = new Date(`${item.date}T00:00:00`);
+            ws.getCell(`A${rowNumber}`).numFmt = "yyyy-mm-dd";
+            ws.getCell(`B${rowNumber}`).value = weekdayName(item.date);
+            ws.getCell(`C${rowNumber}`).value = item.meal;
+            ws.getCell(`D${rowNumber}`).value = item.ingredient;
+            ws.getCell(`E${rowNumber}`).value = item.grams;
+            ws.getCell(`F${rowNumber}`).value = { formula: "$B$3", result: students };
+            ws.getCell(`G${rowNumber}`).value = { formula: `E${rowNumber}*F${rowNumber}`, result: item.grams * students };
+            ws.getCell(`H${rowNumber}`).value = { formula: `G${rowNumber}/$D$3`, result: item.grams * students / oneJin };
+            ws.getCell(`I${rowNumber}`).value = item.sick ? "是" : "否";
+            const row = ws.getRow(rowNumber);
+            row.height = 23;
+            row.eachCell({ includeEmpty: true }, (cell, column) => {
+              cell.font = { name: "Microsoft YaHei", size: 10, color: { argb: colors.ink } };
+              cell.alignment = { vertical: "middle", horizontal: column >= 5 && column <= 8 ? "right" : "left", wrapText: true };
+              cell.border = thinBorder;
+              cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: item.sick ? colors.peach : (rowNumber - firstItemRow) % 2 === 0 ? argb("F4FAFE") : colors.white } };
+            });
+          }
+
+          const subtotalRow = cursor++;
+          ws.mergeCells(`A${subtotalRow}:F${subtotalRow}`);
+          ws.getCell(`A${subtotalRow}`).value = "本日正常餐合计（不含病号菜）";
+          ws.getCell(`G${subtotalRow}`).value = dayTotalG;
+          ws.getCell(`H${subtotalRow}`).value = dayTotalJin;
+          ws.getCell(`I${subtotalRow}`).value = sickItems.length ? `另有${sickItems.length}项` : "无";
+          ws.getRow(subtotalRow).eachCell({ includeEmpty: true }, (cell) => {
+            cell.font = { name: "Microsoft YaHei", bold: true, color: { argb: argb("274E13") } };
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: colors.green } };
+            cell.alignment = { vertical: "middle", horizontal: "center" };
+            cell.border = mediumBorder(argb("5B8C5A"));
+          });
+          ws.getCell(`G${subtotalRow}`).numFmt = "0.0";
+          ws.getCell(`H${subtotalRow}`).numFmt = "0.000";
+          ws.getRow(subtotalRow).height = 25;
+
+          const spacer = ws.getRow(cursor++);
+          spacer.height = 9;
+          for (let col = 1; col <= 9; col++) spacer.getCell(col).fill = { type: "pattern", pattern: "solid", fgColor: { argb: argb("EAF2F8") } };
+        }
+
+        const normalRows = weekData.filter((row) => !row.sick);
+        const sickRows = weekData.filter((row) => row.sick);
+        const normalTotal = normalRows.reduce((sum, row) => sum + row.grams * students / oneJin, 0);
+        const sickTotal = sickRows.reduce((sum, row) => sum + row.grams * students / oneJin, 0);
+        ws.mergeCells(`A${cursor}:F${cursor}`);
+        ws.getCell(`A${cursor}`).value = `${week}总计`;
+        ws.getCell(`G${cursor}`).value = `${normalRows.length}项`;
+        ws.getCell(`H${cursor}`).value = normalTotal;
+        ws.getCell(`I${cursor}`).value = `病号菜${sickTotal.toFixed(3)}斤`;
+        ws.getRow(cursor).eachCell({ includeEmpty: true }, (cell) => {
+          cell.font = { name: "Microsoft YaHei", size: 11, bold: true, color: { argb: colors.white } };
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: colors.blue } };
+          cell.alignment = { horizontal: "center", vertical: "middle" };
+          cell.border = mediumBorder();
+        });
+        ws.getCell(`H${cursor}`).numFmt = "0.000";
+        ws.getRow(cursor).height = 28;
+        ws.pageSetup = { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0, paperSize: 9 };
+        ws.headerFooter.oddFooter = "&L每周独立数据卡&C第 &P 页 / 共 &N 页&ROliver XUC";
+        return { dateEntries, normalRows, sickRows, normalTotal, sickTotal };
+      }
+
       async function exportWorkbook() {
         if (!window.ExcelJS) {
           showToast("Excel组件尚未加载，请检查网络后刷新页面");
           return;
         }
         const exportRows = aggregatedForExport();
-        const normalRows = exportRows.filter((row) => !row.sick);
-        const sickRows = exportRows.filter((row) => row.sick);
-        if (!normalRows.length) {
+        if (!exportRows.some((row) => !row.sick)) {
           showToast("至少需要一条正常餐食材数据");
           return;
         }
@@ -954,157 +1432,62 @@
           workbook.modified = new Date();
           workbook.calcProperties.fullCalcOnLoad = true;
           workbook.calcProperties.forceFullCalc = true;
-
-          const summary = workbook.addWorksheet("每日汇总", { views: [{ showGridLines: false, state: "frozen", ySplit: 6 }] });
-          const detail = workbook.addWorksheet("食材明细", { views: [{ showGridLines: false, state: "frozen", ySplit: 5 }] });
-          const sick = workbook.addWorksheet("病号菜", { views: [{ showGridLines: false, state: "frozen", ySplit: 5 }] });
-          const imageSheet = workbook.addWorksheet("原始图片", { views: [{ showGridLines: false }] });
-
           const titlePrefix = schoolName ? `${schoolName}｜` : "";
-          styleTitle(summary, "H", `${titlePrefix}每周食材采购汇总（${students}名学生）`);
-          summary.getRow(3).values = ["学生人数", students, "1斤克数", oneJin, "托小班每人奶量(L)", smallMilk, "中班每人奶量(L)", middleMilk];
-          for (const col of [1, 3, 5, 7]) {
-            const cell = summary.getRow(3).getCell(col);
-            cell.font = { name: "Microsoft YaHei", bold: true, color: { argb: colors.navy } };
-            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: argb("D9EAF7") } };
-            cell.alignment = { horizontal: "center", vertical: "middle" };
-          }
-          for (const col of [2, 4, 6, 8]) {
-            const cell = summary.getRow(3).getCell(col);
-            cell.font = { name: "Microsoft YaHei", bold: true, color: { argb: argb("7F6000") } };
-            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: colors.yellow } };
-            cell.alignment = { horizontal: "center", vertical: "middle" };
-            cell.border = thinBorder;
-          }
-          summary.getRow(3).height = 27;
-          styleNote(summary, "A4:H4", "黄色单元格可修改；正常餐斤数不含液体奶、清水、未标克数调味料及病号菜。");
-          summary.getRow(4).height = 26;
-          summary.getRow(6).values = ["日期", "星期", "食材项数", `${students}人总量(g)`, "合计(斤)", "托小班奶量(L)", "中班奶量(L)", "备注"];
-          styleHeader(summary.getRow(6));
+          const options = { students, oneJin, smallMilk, middleMilk, titlePrefix };
+          const usedNames = new Set();
+          const overview = workbook.addWorksheet(safeSheetName("多周总览", usedNames), { views: [{ showGridLines: false, state: "frozen", ySplit: 5 }] });
+          styleTitle(overview, "H", `${titlePrefix}多周食材用量总览（${students}名学生）`);
+          fillParameterRow(overview, students, oneJin, smallMilk, middleMilk);
+          overview.getRow(5).values = ["周次", "日期范围", "天数", "食材项数", "正常餐合计(斤)", "病号菜合计(斤)", "处理说明"];
+          styleHeader(overview.getRow(5));
+          overview.columns = [{ width: 14 }, { width: 25 }, { width: 10 }, { width: 13 }, { width: 19 }, { width: 19 }, { width: 38 }, { width: 3 }];
 
-          const byDate = new Map();
-          for (const row of normalRows) {
-            if (!byDate.has(row.date)) byDate.set(row.date, []);
-            byDate.get(row.date).push(row);
+          const weekNames = state.weekOrder.filter((week) => exportRows.some((row) => row.week === week));
+          const summaries = [];
+          for (const week of weekNames) {
+            const weekData = exportRows.filter((row) => row.week === week);
+            summaries.push({ week, ...addWeekDataCard(workbook, week, weekData, options, usedNames) });
           }
-          const dateEntries = [...byDate.entries()].sort(([a], [b]) => a.localeCompare(b));
-          const detailStart = 6;
-          const detailEnd = detailStart + normalRows.length - 1;
-          dateEntries.forEach(([date, items], index) => {
-            const excelRow = 7 + index;
-            const totalG = items.reduce((sum, item) => sum + item.grams * students, 0);
-            summary.getCell(`A${excelRow}`).value = new Date(`${date}T00:00:00`);
-            summary.getCell(`A${excelRow}`).numFmt = "yyyy-mm-dd";
-            summary.getCell(`B${excelRow}`).value = weekdayName(date);
-            summary.getCell(`C${excelRow}`).value = { formula: `COUNTIF('食材明细'!$A$${detailStart}:$A$${detailEnd},A${excelRow})`, result: items.length };
-            summary.getCell(`D${excelRow}`).value = { formula: `SUMIF('食材明细'!$A$${detailStart}:$A$${detailEnd},A${excelRow},'食材明细'!$G$${detailStart}:$G$${detailEnd})`, result: totalG };
-            summary.getCell(`E${excelRow}`).value = { formula: `D${excelRow}/$D$3`, result: totalG / oneJin };
-            summary.getCell(`F${excelRow}`).value = { formula: `$B$3*$F$3`, result: students * smallMilk };
-            summary.getCell(`G${excelRow}`).value = { formula: `$B$3*$H$3`, result: students * middleMilk };
-            summary.getCell(`H${excelRow}`).value = "正常餐；不含病号菜";
-          });
-          const firstSummaryRow = 7;
-          const lastSummaryRow = 6 + dateEntries.length;
-          styleBody(summary, firstSummaryRow, lastSummaryRow, 8);
-          summary.getColumn(1).numFmt = "yyyy-mm-dd";
-          summary.getColumn(3).numFmt = "0";
-          summary.getColumn(4).numFmt = "0.0";
-          summary.getColumn(5).numFmt = "0.000";
-          summary.getColumn(6).numFmt = "0.00";
-          summary.getColumn(7).numFmt = "0.00";
-          const totalRow = lastSummaryRow + 1;
-          const totalGAll = normalRows.reduce((sum, row) => sum + row.grams * students, 0);
-          summary.getCell(`A${totalRow}`).value = "全部日期合计";
-          summary.getCell(`C${totalRow}`).value = { formula: `SUM(C${firstSummaryRow}:C${lastSummaryRow})`, result: normalRows.length };
-          summary.getCell(`D${totalRow}`).value = { formula: `SUM(D${firstSummaryRow}:D${lastSummaryRow})`, result: totalGAll };
-          summary.getCell(`E${totalRow}`).value = { formula: `SUM(E${firstSummaryRow}:E${lastSummaryRow})`, result: totalGAll / oneJin };
-          summary.getCell(`F${totalRow}`).value = { formula: `SUM(F${firstSummaryRow}:F${lastSummaryRow})`, result: dateEntries.length * students * smallMilk };
-          summary.getCell(`G${totalRow}`).value = { formula: `SUM(G${firstSummaryRow}:G${lastSummaryRow})`, result: dateEntries.length * students * middleMilk };
-          summary.getRow(totalRow).eachCell({ includeEmpty: true }, (cell) => {
-            cell.font = { name: "Microsoft YaHei", bold: true, color: { argb: argb("274E13") } };
-            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: colors.green } };
-            cell.border = thinBorder;
-          });
-          summary.columns = [{ width: 15 }, { width: 10 }, { width: 13 }, { width: 17 }, { width: 15 }, { width: 18 }, { width: 18 }, { width: 28 }];
-          summary.autoFilter = { from: "A6", to: `H${lastSummaryRow}` };
-
-          styleTitle(detail, "I", "每日食材明细与学生人数换算");
-          styleNote(detail, "A3:I3", "计算公式：总量(g)=每人用量(g)×学生人数；总量(斤)=总量(g)÷1斤克数。学生人数引用“每日汇总”黄色输入格。");
-          styleNote(detail, "A4:I4", "导出前已自动合并同一天的同名食材；餐次和来源说明会合并保留。");
-          detail.getRow(5).values = ["日期", "星期", "餐次", "食材", "每人用量(g)", "学生人数", "总量(g)", "总量(斤)", "菜品/来源说明"];
-          styleHeader(detail.getRow(5));
-          normalRows.forEach((row, index) => {
-            const excelRow = 6 + index;
-            detail.getCell(`A${excelRow}`).value = new Date(`${row.date}T00:00:00`);
-            detail.getCell(`A${excelRow}`).numFmt = "yyyy-mm-dd";
-            detail.getCell(`B${excelRow}`).value = weekdayName(row.date);
-            detail.getCell(`C${excelRow}`).value = row.meal;
-            detail.getCell(`D${excelRow}`).value = row.ingredient;
-            detail.getCell(`E${excelRow}`).value = row.grams;
-            detail.getCell(`F${excelRow}`).value = { formula: `'每日汇总'!$B$3`, result: students };
-            detail.getCell(`G${excelRow}`).value = { formula: `E${excelRow}*F${excelRow}`, result: row.grams * students };
-            detail.getCell(`H${excelRow}`).value = { formula: `G${excelRow}/'每日汇总'!$D$3`, result: row.grams * students / oneJin };
-            detail.getCell(`I${excelRow}`).value = row.source;
-          });
-          styleBody(detail, 6, detailEnd, 9);
-          detail.getColumn(1).numFmt = "yyyy-mm-dd";
-          detail.getColumn(5).numFmt = "0.0";
-          detail.getColumn(6).numFmt = "0";
-          detail.getColumn(7).numFmt = "0.0";
-          detail.getColumn(8).numFmt = "0.000";
-          detail.columns = [{ width: 15 }, { width: 9 }, { width: 15 }, { width: 22 }, { width: 16 }, { width: 13 }, { width: 16 }, { width: 16 }, { width: 38 }];
-          detail.autoFilter = { from: "A5", to: `I${detailEnd}` };
-
-          styleTitle(sick, "H", "病号菜理论用量（不计入正常餐）");
-          styleNote(sick, "A3:H3", "以下按设定学生人数进行理论换算；实际采购请按当天病号人数调整。", colors.peach, argb("9C0006"));
-          sick.getRow(5).values = ["日期", "菜品/食材", "每人用量(g)", "理论人数", "总量(g)", "总量(斤)", "计入正常餐", "说明"];
-          styleHeader(sick.getRow(5));
-          if (sickRows.length) {
-            sickRows.forEach((row, index) => {
-              const excelRow = 6 + index;
-              sick.getCell(`A${excelRow}`).value = new Date(`${row.date}T00:00:00`);
-              sick.getCell(`A${excelRow}`).numFmt = "yyyy-mm-dd";
-              sick.getCell(`B${excelRow}`).value = row.ingredient;
-              sick.getCell(`C${excelRow}`).value = row.grams;
-              sick.getCell(`D${excelRow}`).value = { formula: `'每日汇总'!$B$3`, result: students };
-              sick.getCell(`E${excelRow}`).value = { formula: `C${excelRow}*D${excelRow}`, result: row.grams * students };
-              sick.getCell(`F${excelRow}`).value = { formula: `E${excelRow}/'每日汇总'!$D$3`, result: row.grams * students / oneJin };
-              sick.getCell(`G${excelRow}`).value = "否";
-              sick.getCell(`H${excelRow}`).value = row.source;
+          summaries.forEach((item, index) => {
+            const rowNumber = 6 + index;
+            const dates = item.dateEntries.map(([date]) => date);
+            overview.getRow(rowNumber).values = [
+              item.week,
+              dates.length ? `${dates[0]} 至 ${dates[dates.length - 1]}` : "",
+              dates.length,
+              item.normalRows.length + item.sickRows.length,
+              item.normalTotal,
+              item.sickTotal,
+              state.ignoredSheets.length ? `已自动忽略：${state.ignoredSheets.join("、")}` : "仅处理名称为“第…周”的工作表",
+            ];
+            overview.getCell(`E${rowNumber}`).numFmt = "0.000";
+            overview.getCell(`F${rowNumber}`).numFmt = "0.000";
+            overview.getRow(rowNumber).height = 25;
+            overview.getRow(rowNumber).eachCell({ includeEmpty: true }, (cell) => {
+              cell.font = { name: "Microsoft YaHei", size: 10, color: { argb: colors.ink } };
+              cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+              cell.border = mediumBorder(index % 2 === 0 ? colors.blue : colors.navy);
+              cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: index % 2 === 0 ? argb("F4FAFE") : colors.pale } };
             });
-            styleBody(sick, 6, 5 + sickRows.length, 8);
-            sick.autoFilter = { from: "A5", to: `H${5 + sickRows.length}` };
-          } else {
-            sick.mergeCells("A6:H6");
-            sick.getCell("A6").value = "本次没有标记病号菜";
-            sick.getCell("A6").alignment = { horizontal: "center", vertical: "middle" };
-            sick.getCell("A6").font = { name: "Microsoft YaHei", color: { argb: colors.navy } };
-          }
-          sick.getColumn(1).numFmt = "yyyy-mm-dd";
-          sick.getColumn(3).numFmt = "0.0";
-          sick.getColumn(4).numFmt = "0";
-          sick.getColumn(5).numFmt = "0.0";
-          sick.getColumn(6).numFmt = "0.000";
-          sick.columns = [{ width: 15 }, { width: 23 }, { width: 16 }, { width: 14 }, { width: 16 }, { width: 15 }, { width: 15 }, { width: 40 }];
+          });
 
-          styleTitle(imageSheet, "H", "原始菜谱图片");
-          imageSheet.columns = [{ width: 16 }, { width: 16 }, { width: 16 }, { width: 16 }, { width: 16 }, { width: 16 }, { width: 16 }, { width: 16 }];
-          imageSheet.getCell("A3").value = "图片文件";
-          imageSheet.getCell("B3").value = state.uploadedFile ? state.uploadedFile.name : "未插入图片";
-          imageSheet.getCell("A3").font = { name: "Microsoft YaHei", bold: true, color: { argb: colors.navy } };
-          imageSheet.getCell("B3").font = { name: "Microsoft YaHei", color: { argb: colors.ink } };
           if (state.imageDataUrl) {
+            const imageSheet = workbook.addWorksheet(safeSheetName("原始图片", usedNames), { views: [{ showGridLines: false }] });
+            styleTitle(imageSheet, "H", "原始菜谱图片");
+            imageSheet.columns = Array.from({ length: 8 }, () => ({ width: 16 }));
+            imageSheet.getCell("A3").value = "图片文件";
+            imageSheet.getCell("B3").value = state.uploadedFile ? state.uploadedFile.name : "已插入图片";
+            imageSheet.getCell("A3").font = { name: "Microsoft YaHei", bold: true, color: { argb: colors.navy } };
+            imageSheet.getCell("B3").font = { name: "Microsoft YaHei", color: { argb: colors.ink } };
             const imageId = workbook.addImage({ base64: state.imageDataUrl, extension: "jpeg" });
             const scale = Math.min(1, 1100 / state.imageWidth, 900 / state.imageHeight);
             imageSheet.addImage(imageId, { tl: { col: 0, row: 4 }, ext: { width: Math.round(state.imageWidth * scale), height: Math.round(state.imageHeight * scale) } });
-          } else {
-            styleNote(imageSheet, "A5:H6", "本次未插入原始菜谱图片。", colors.pale, colors.navy);
           }
 
           const buffer = await workbook.xlsx.writeBuffer();
           const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-          const dates = dateEntries.map(([date]) => date);
-          const fileName = `幼儿园食材用量_${dates[0]}至${dates[dates.length - 1]}_${students}名学生.xlsx`;
+          const weekLabel = weekNames.length === 1 ? weekNames[0] : `${weekNames[0]}至${weekNames[weekNames.length - 1]}`;
+          const fileName = `幼儿园食材用量_${weekLabel}_${students}名学生.xlsx`;
           if (state.downloadUrl) URL.revokeObjectURL(state.downloadUrl);
           state.downloadUrl = URL.createObjectURL(blob);
           const downloadLink = $("downloadLink");
@@ -1127,6 +1510,8 @@
       $("weekStart").value = getMonday();
       $("studentCount").addEventListener("input", updateComputedCells);
       $("jinGrams").addEventListener("input", updateComputedCells);
+      $("excelInput").addEventListener("change", (event) => handleExcel(event.target.files[0]));
+      $("removeExcelBtn").addEventListener("click", removeExcel);
       $("imageInput").addEventListener("change", (event) => handleImage(event.target.files[0]));
       $("recognizeBtn").addEventListener("click", recognizeImage);
       $("removeImageBtn").addEventListener("click", removeImage);
@@ -1134,12 +1519,18 @@
       $("clearTextBtn").addEventListener("click", () => { $("ocrText").value = ""; });
       $("sampleBtn").addEventListener("click", () => {
         $("weekStart").value = "2026-08-24";
-        state.rows = sampleRows.map(([date, meal, ingredient, grams, source, sick]) => newRow({ date, meal, ingredient, grams, source, sick }));
+        state.weekOrder = ["第九周", "第十周"];
+        state.activeWeek = "第九周";
+        state.rows = sampleRows.map(([date, meal, ingredient, grams, source, sick]) => newRow({ week: date === "2026-08-24" ? "第九周" : "第十周", date, meal, ingredient, grams, sick }));
         renderRows();
-        showToast("已加载8月24日和8月31日示例数据");
+        showToast("已加载第九周和第十周示例数据");
       });
       $("addRowBtn").addEventListener("click", () => {
-        state.rows.push(newRow({ date: $("weekStart").value, meal: "未分类" }));
+        if (!state.activeWeek) {
+          state.activeWeek = "手动录入";
+          state.weekOrder = [state.activeWeek];
+        }
+        state.rows.push(newRow({ week: state.activeWeek, date: $("weekStart").value, meal: "未分类" }));
         renderRows();
         const wrap = document.querySelector(".table-wrap");
         wrap.scrollTop = wrap.scrollHeight;
@@ -1150,12 +1541,20 @@
         showToast("已合并同一天的同名食材");
       });
       $("clearRowsBtn").addEventListener("click", () => {
-        if (!state.rows.length || confirm("确定清空全部食材明细吗？")) {
-          state.rows = [];
+        const count = weekRows().length;
+        if (!count || confirm(`确定清空“${state.activeWeek}”的全部食材明细吗？`)) {
+          state.rows = state.rows.filter((row) => row.week !== state.activeWeek);
           renderRows();
         }
       });
       $("exportBtn").addEventListener("click", exportWorkbook);
+
+      $("weekCards").addEventListener("click", (event) => {
+        const button = event.target.closest("[data-week]");
+        if (!button) return;
+        state.activeWeek = button.dataset.week;
+        renderRows();
+      });
 
       $("ingredientBody").addEventListener("input", (event) => {
         const tr = event.target.closest("tr[data-id]");
@@ -1203,7 +1602,7 @@
       dropzone.addEventListener("drop", (event) => handleImage(event.dataTransfer.files[0]));
 
       window.addEventListener("load", () => {
-        const ready = Boolean(window.Tesseract && window.ExcelJS);
+        const ready = Boolean(window.Tesseract && window.XLSX && window.ExcelJS);
         $("libraryDot").classList.add(ready ? "ready" : "error");
         $("libraryStatus").textContent = ready ? "在线组件已就绪" : "在线组件加载失败";
       });
