@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#1f4e78">
-  <title>幼儿园食材用量识别工具 V7</title>
+  <title>幼儿园食材用量识别工具 V9</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
@@ -76,14 +76,28 @@
     }
     .brand h1 { margin: 0; font-size: 18px; letter-spacing: .02em; }
     .brand p { margin: 3px 0 0; font-size: 12px; color: rgba(255,255,255,.72); }
-    .privacy-pill {
+    .usage-count {
+      min-width: 2ch;
+      color: #fff;
+      font-size: 18px;
+      font-weight: 800;
+      line-height: 1;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
       white-space: nowrap;
-      border: 1px solid rgba(255,255,255,.24);
-      border-radius: 999px;
-      padding: 7px 11px;
-      color: rgba(255,255,255,.88);
-      font-size: 12px;
     }
+    .topbar-actions { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; }
+    .log-export-btn {
+      min-height: 34px;
+      padding: 0 13px;
+      border: 1px solid rgba(255,255,255,.35);
+      border-radius: 10px;
+      color: #fff;
+      background: rgba(255,255,255,.13);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .log-export-btn:hover:not(:disabled) { background: rgba(255,255,255,.22); }
 
     .page {
       max-width: 1780px;
@@ -349,8 +363,13 @@
     }
     @media (max-width: 640px) {
       .topbar-inner, .page { padding-left: 14px; padding-right: 14px; }
-      .privacy-pill { display: none; }
+      .topbar-inner { gap: 8px; }
+      .brand { gap: 8px; }
+      .brand-mark { width: 34px; height: 34px; border-radius: 10px; font-size: 18px; }
       .brand h1 { font-size: 15px; }
+      .brand p { display: none; }
+      .topbar-actions { gap: 8px; }
+      .log-export-btn { min-height: 32px; padding: 0 10px; }
       .hero-main { padding: 22px 20px; }
       .form-grid { grid-template-columns: 1fr; }
       .field.wide { grid-column: auto; }
@@ -376,10 +395,13 @@
         <div class="brand-mark" aria-hidden="true">▦</div>
         <div>
           <h1>幼儿园食材用量识别工具</h1>
-          <p>Excel精准读取 · 三种报告格式 · 多周独立统计 · V7</p>
+          <p>Excel精准读取 · 三种报告格式 · 多周独立统计 · V9</p>
         </div>
       </div>
-      <div class="privacy-pill">文件仅在当前浏览器内处理</div>
+      <div class="topbar-actions">
+        <span id="usageCount" class="usage-count" aria-label="累计使用次数">0</span>
+        <button id="logExportBtn" class="log-export-btn" type="button">Export</button>
+      </div>
     </div>
   </header>
 
@@ -390,7 +412,7 @@
         <h2>上传菜谱 Excel，生成每日食材用量</h2>
         <p class="hero-copy">直接读取Excel单元格，自动忽略“第…周带量”。可指定只识别某一周；不填写周次时，自动统计文件内全部“第…周”工作表。</p>
         <div class="hero-tags">
-          <span class="hero-tag">GitHub版 V7</span>
+          <span class="hero-tag">GitHub版 V9</span>
           <span class="hero-tag">适配GitHub Pages</span>
           <span class="hero-tag">学生人数可修改</span>
           <span class="hero-tag">多周独立数据卡</span>
@@ -506,6 +528,9 @@
         defaultDate: "",
         nextId: 1,
       };
+      const usageLogStorageKey = "kindergartenFoodToolUsageLogV1";
+      let currentUsageSessionId = "";
+      let memoryUsageLogs = [];
 
       const sampleRows = [
         ["2026-08-24", "早餐", "奶粉", 15, "早餐奶粉", false],
@@ -644,6 +669,94 @@
         clearTimeout(showToast.timer);
         showToast.timer = setTimeout(() => toast.classList.remove("show"), 2800);
       }
+
+      function incrementUsageCount() {
+        const storageKey = "kindergartenFoodToolUsageCount";
+        let count = 1;
+        try {
+          const previous = Number.parseInt(localStorage.getItem(storageKey), 10);
+          count = (Number.isFinite(previous) && previous >= 0 ? previous : 0) + 1;
+          localStorage.setItem(storageKey, String(count));
+        } catch (error) {
+          count = 1;
+        }
+        $("usageCount").textContent = String(count);
+      }
+
+      function usageDateTime(date = new Date()) {
+        const pad = (value) => String(value).padStart(2, "0");
+        return {
+          date: `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
+          time: `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`,
+        };
+      }
+
+      function usageLogCutoff(now = new Date()) {
+        const cutoff = new Date(now);
+        cutoff.setMonth(cutoff.getMonth() - 2);
+        return cutoff.getTime();
+      }
+
+      function readUsageLogs() {
+        let records = memoryUsageLogs;
+        try {
+          const parsed = JSON.parse(localStorage.getItem(usageLogStorageKey) || "[]");
+          if (Array.isArray(parsed)) records = parsed;
+        } catch (error) {
+          records = memoryUsageLogs;
+        }
+        const cutoff = usageLogCutoff();
+        const filtered = records.filter((record) => Number(record.timestamp) >= cutoff).map((record) => ({
+          id: String(record.id || ""),
+          timestamp: Number(record.timestamp) || 0,
+          date: String(record.date || ""),
+          time: String(record.time || ""),
+          loadedFiles: Array.isArray(record.loadedFiles) ? record.loadedFiles.map(String) : [],
+          generatedFiles: Array.isArray(record.generatedFiles) ? record.generatedFiles.map(String) : [],
+        })).sort((a, b) => b.timestamp - a.timestamp);
+        memoryUsageLogs = filtered;
+        return filtered;
+      }
+
+      function writeUsageLogs(records) {
+        const filtered = records.filter((record) => Number(record.timestamp) >= usageLogCutoff()).slice(0, 1000);
+        memoryUsageLogs = filtered;
+        try {
+          localStorage.setItem(usageLogStorageKey, JSON.stringify(filtered));
+        } catch (error) {
+          // Private browsing or storage quota errors fall back to memory for this page session.
+        }
+      }
+
+      function startUsageSession() {
+        const now = new Date();
+        const parts = usageDateTime(now);
+        currentUsageSessionId = `${now.getTime()}-${Math.random().toString(36).slice(2, 9)}`;
+        const records = readUsageLogs();
+        records.unshift({
+          id: currentUsageSessionId,
+          timestamp: now.getTime(),
+          date: parts.date,
+          time: parts.time,
+          loadedFiles: [],
+          generatedFiles: [],
+        });
+        writeUsageLogs(records);
+      }
+
+      function updateCurrentUsageSession(field, fileName) {
+        const name = String(fileName || "").trim();
+        if (!name || !currentUsageSessionId) return;
+        const records = readUsageLogs();
+        const record = records.find((item) => item.id === currentUsageSessionId);
+        if (!record) return;
+        const values = field === "loadedFiles" ? record.loadedFiles : record.generatedFiles;
+        if (!values.includes(name)) values.push(name);
+        writeUsageLogs(records);
+      }
+
+      function recordLoadedFile(fileName) { updateCurrentUsageSession("loadedFiles", fileName); }
+      function recordGeneratedFile(fileName) { updateCurrentUsageSession("generatedFiles", fileName); }
 
       function weekRows(week = state.activeWeek) {
         return state.rows.filter((row) => row.week === week);
@@ -975,6 +1088,7 @@
 
       async function handleExcel(file) {
         if (!file) return;
+        recordLoadedFile(file.name);
         if (!window.XLSX) {
           showToast("Excel读取组件尚未加载，请检查网络后刷新页面");
           return;
@@ -1326,7 +1440,7 @@
         return { dateEntries, normalRows, sickRows, normalTotal, sickTotal };
       }
 
-      function triggerBlobDownload(blob, fileName) {
+      function triggerBlobDownload(blob, fileName, includeInUsageLog = true) {
         if (state.downloadUrl) URL.revokeObjectURL(state.downloadUrl);
         state.downloadUrl = URL.createObjectURL(blob);
         const link = document.createElement("a");
@@ -1336,6 +1450,7 @@
         document.body.appendChild(link);
         link.click();
         link.remove();
+        if (includeInUsageLog) recordGeneratedFile(fileName);
       }
 
       async function exportWorkbook() {
@@ -1615,6 +1730,75 @@
         }
       }
 
+      const usageLogPdfStyles = `
+        .usage-log-page{width:1120px;min-height:740px;padding:34px 38px;box-sizing:border-box;background:#fff;color:#17324d;font-family:"Microsoft YaHei","PingFang SC","Noto Sans SC",sans-serif}
+        .usage-log-page *{box-sizing:border-box}.usage-log-head{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;padding-bottom:14px;margin-bottom:16px;border-bottom:5px solid #1f4e78}
+        .usage-log-head h1{margin:0;color:#1f4e78;font-size:28px}.usage-log-head p{margin:6px 0 0;color:#60758a;font-size:13px}.usage-log-badge{padding:8px 12px;border-radius:999px;background:#eaf3fb;color:#1f4e78;font-size:12px;font-weight:700;white-space:nowrap}
+        .usage-log-page table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:11px}.usage-log-page th{padding:9px 7px;border:1px solid #376d99;color:#fff;background:#5b9bd5;text-align:center}.usage-log-page td{padding:8px 7px;border:1px solid #c9d8e5;vertical-align:middle;word-break:break-word;line-height:1.45}.usage-log-page tbody tr:nth-child(even) td{background:#f4fafe}
+        .usage-log-empty{padding:70px 20px;border:1px solid #c9d8e5;text-align:center;color:#60758a}.usage-log-footer{margin-top:16px;padding-top:9px;border-top:1px solid #d7e3ed;display:flex;justify-content:space-between;color:#7f93a4;font-size:10px}
+      `;
+
+      function buildUsageLogPages(records) {
+        const generatedAt = new Date();
+        const generatedParts = usageDateTime(generatedAt);
+        const cutoffParts = usageDateTime(new Date(usageLogCutoff(generatedAt)));
+        const chunks = [];
+        if (!records.length) chunks.push([]);
+        for (let index = 0; index < records.length; index += 14) chunks.push(records.slice(index, index + 14));
+        return chunks.map((chunk, pageIndex) => {
+          const rows = chunk.map((record, rowIndex) => {
+            const loaded = record.loadedFiles.length ? record.loadedFiles.map(escapeHtml).join("<br>") : "—";
+            const generated = record.generatedFiles.length ? record.generatedFiles.map(escapeHtml).join("<br>") : "—";
+            return `<tr><td>${pageIndex * 14 + rowIndex + 1}</td><td>${escapeHtml(record.date)}</td><td>${escapeHtml(record.time)}</td><td>${loaded}</td><td>${generated}</td></tr>`;
+          }).join("");
+          const table = rows
+            ? `<table><colgroup><col style="width:7%"><col style="width:14%"><col style="width:12%"><col style="width:29%"><col style="width:38%"></colgroup><thead><tr><th>序号</th><th>日期</th><th>时间</th><th>载入文件名</th><th>生成文件记录</th></tr></thead><tbody>${rows}</tbody></table>`
+            : '<div class="usage-log-empty">近两个月暂无使用记录</div>';
+          return `<div class="usage-log-page"><div class="usage-log-head"><div><h1>工具使用记录</h1><p>记录范围：${cutoffParts.date} 至 ${generatedParts.date} · 共 ${records.length} 次使用</p></div><div class="usage-log-badge">近两个月</div></div>${table}<div class="usage-log-footer"><span>幼儿园食材用量识别工具</span><span>生成时间：${generatedParts.date} ${generatedParts.time}　｜　第${pageIndex + 1}/${chunks.length}页</span></div></div>`;
+        });
+      }
+
+      async function exportUsageLogPdf() {
+        if (!window.jspdf?.jsPDF || !window.html2canvas) {
+          showToast("PDF组件尚未加载，请检查网络后刷新页面");
+          return;
+        }
+        const button = $("logExportBtn");
+        button.disabled = true;
+        button.textContent = "…";
+        const records = readUsageLogs();
+        const pages = buildUsageLogPages(records);
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4", compress: true });
+        pdf.setProperties({ title: "工具使用记录（近两个月）", author: "Oliver XUC", creator: "幼儿园食材用量识别工具" });
+        const stage = document.createElement("div");
+        stage.style.cssText = "position:fixed;left:-12000px;top:0;width:1120px;background:#fff;z-index:-1";
+        document.body.appendChild(stage);
+        try {
+          for (let index = 0; index < pages.length; index++) {
+            stage.innerHTML = `<style>${usageLogPdfStyles}</style>${pages[index]}`;
+            const node = stage.querySelector(".usage-log-page");
+            const canvas = await html2canvas(node, { scale: 1.5, backgroundColor: "#ffffff", logging: false, useCORS: true });
+            const image = canvas.toDataURL("image/jpeg", .92);
+            const ratio = Math.min(287 / canvas.width, 200 / canvas.height);
+            const width = canvas.width * ratio;
+            const height = canvas.height * ratio;
+            if (index > 0) pdf.addPage("a4", "landscape");
+            pdf.addImage(image, "JPEG", (297 - width) / 2, (210 - height) / 2, width, height, undefined, "FAST");
+          }
+          const today = usageDateTime().date;
+          triggerBlobDownload(pdf.output("blob"), `工具使用记录_近两个月_${today}.pdf`, false);
+          showToast("使用记录PDF已生成并开始下载");
+        } catch (error) {
+          console.error(error);
+          showToast("生成使用记录PDF失败，请刷新页面后重试");
+        } finally {
+          stage.remove();
+          button.disabled = false;
+          button.textContent = "Export";
+        }
+      }
+
       async function generateSelectedReport() {
         if (!state.rows.length) {
           showToast("请先上传并识别Excel文件");
@@ -1664,6 +1848,7 @@
         }
       });
       $("exportBtn").addEventListener("click", generateSelectedReport);
+      $("logExportBtn").addEventListener("click", exportUsageLogPdf);
 
       $("weekCards").addEventListener("click", (event) => {
         const button = event.target.closest("[data-week]");
@@ -1717,6 +1902,8 @@
         $("libraryDot").classList.add(ready ? "ready" : "error");
         $("libraryStatus").textContent = ready ? "在线组件已就绪" : "在线组件加载失败";
       });
+      incrementUsageCount();
+      startUsageSession();
       renderRows();
     })();
   </script>
