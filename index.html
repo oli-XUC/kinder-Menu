@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#1f4e78">
-  <title>幼儿园食材用量识别工具 V9</title>
+  <title>幼儿园食材用量与菜谱工具 V10</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
@@ -98,6 +98,46 @@
       font-weight: 800;
     }
     .log-export-btn:hover:not(:disabled) { background: rgba(255,255,255,.22); }
+
+    .mode-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 18px;
+      padding: 6px;
+      border: 1px solid rgba(182, 204, 222, .82);
+      border-radius: 16px;
+      background: rgba(255,255,255,.82);
+      box-shadow: 0 8px 24px rgba(31,78,120,.07);
+      width: fit-content;
+    }
+    .mode-tab {
+      min-height: 42px;
+      padding: 0 20px;
+      border: 0;
+      border-radius: 11px;
+      color: var(--muted);
+      background: transparent;
+      font-weight: 800;
+    }
+    .mode-tab.active { color: #fff; background: var(--navy); box-shadow: 0 6px 16px rgba(31,78,120,.2); }
+    .menu-builder-panel { overflow: hidden; }
+    .menu-builder-grid { display: grid; grid-template-columns: minmax(300px,.72fr) minmax(420px,1.28fr); gap: 18px; }
+    .menu-builder-card {
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #f9fcfe;
+    }
+    .menu-builder-card h4 { margin: 0 0 6px; color: var(--navy); font-size: 17px; }
+    .menu-builder-card > p { margin: 0 0 18px; color: var(--muted); font-size: 13px; line-height: 1.7; }
+    .required-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
+    .menu-rule-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+    .menu-rule-list li { position: relative; padding-left: 22px; color: var(--ink); font-size: 13px; line-height: 1.6; }
+    .menu-rule-list li::before { content: "✓"; position: absolute; left: 0; top: 0; color: var(--green); font-weight: 900; }
+    .menu-generate-box { margin-top: 16px; display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 16px; border: 1px solid #bcd8ca; border-radius: 15px; background: var(--green-bg); }
+    .menu-generate-box strong { display: block; color: #176344; }
+    .menu-generate-box span { display: block; margin-top: 4px; color: #4d7566; font-size: 12px; }
+    .menu-result { margin-top: 14px; padding: 12px 14px; border-radius: 12px; color: var(--navy); background: var(--blue-100); font-size: 13px; line-height: 1.65; }
 
     .page {
       max-width: 1780px;
@@ -360,6 +400,7 @@
       .hero, .workspace { grid-template-columns: 1fr; }
       .flow-card { display: none; }
       .stats { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+      .menu-builder-grid { grid-template-columns: 1fr; }
     }
     @media (max-width: 640px) {
       .topbar-inner, .page { padding-left: 14px; padding-right: 14px; }
@@ -369,6 +410,8 @@
       .brand h1 { font-size: 15px; }
       .brand p { display: none; }
       .topbar-actions { gap: 8px; }
+      .mode-tabs { width: 100%; }
+      .mode-tab { flex: 1; padding: 0 10px; }
       .log-export-btn { min-height: 32px; padding: 0 10px; }
       .hero-main { padding: 22px 20px; }
       .form-grid { grid-template-columns: 1fr; }
@@ -381,6 +424,9 @@
       .excel-upload-card .btn { width: 100%; }
       .button-row .btn { flex: 1 1 auto; }
       .stats { grid-template-columns: repeat(2, 1fr); }
+      .required-grid { grid-template-columns: 1fr; }
+      .menu-generate-box { align-items: stretch; flex-direction: column; }
+      .menu-generate-box .btn { width: 100%; }
       th { padding: 10px 4px; font-size: 11px; }
       td { padding: 5px 3px; }
       .cell-input { padding: 0 5px; font-size: 12px; }
@@ -394,8 +440,8 @@
       <div class="brand">
         <div class="brand-mark" aria-hidden="true">▦</div>
         <div>
-          <h1>幼儿园食材用量识别工具</h1>
-          <p>Excel精准读取 · 三种报告格式 · 多周独立统计 · V9</p>
+          <h1>幼儿园食材用量与菜谱工具</h1>
+          <p>Excel精准读取 · 菜谱智能生成 · 多周独立统计 · V10</p>
         </div>
       </div>
       <div class="topbar-actions">
@@ -406,13 +452,67 @@
   </header>
 
   <main class="page">
+    <nav class="mode-tabs" aria-label="功能菜单">
+      <button id="analysisModeBtn" class="mode-tab active" type="button">食材统计</button>
+      <button id="menuModeBtn" class="mode-tab" type="button">新建菜谱</button>
+    </nav>
+
+    <section id="menuBuilderView" class="panel menu-builder-panel" hidden>
+      <div class="panel-head">
+        <div class="panel-title"><span class="step-badge">＋</span><div><h3>新建菜谱</h3><p>按原始菜谱模板生成可直接回传统计的 Excel</p></div></div>
+      </div>
+      <div class="panel-body">
+        <div class="menu-builder-grid">
+          <div class="menu-builder-card">
+            <h4>生成范围</h4>
+            <p>每周生成5个工作日。日期从所选周一开始连续排列，工作表名称从起始周次顺延。</p>
+            <div class="form-grid">
+              <div class="field"><label for="menuWeekCount">创建几周</label><input id="menuWeekCount" class="input parameter" type="number" min="1" max="20" step="1" value="1"></div>
+              <div class="field"><label for="menuStartWeek">起始周次</label><input id="menuStartWeek" class="input parameter" type="number" min="1" max="99" step="1" value="1"></div>
+              <div class="field wide"><label for="menuStartDate">开始日期（周一）</label><input id="menuStartDate" class="input parameter" type="date"></div>
+              <div class="field wide"><label for="menuSchoolName">学校名称</label><input id="menuSchoolName" class="input" type="text" value="幼儿园" placeholder="请输入幼儿园名称"></div>
+            </div>
+          </div>
+
+          <div class="menu-builder-card">
+            <h4>必需食材</h4>
+            <p>每个已选择的食材至少在每周菜谱中出现一次。默认“无”表示不指定。</p>
+            <div class="required-grid">
+              <div class="field"><label for="requiredVegetable">蔬菜</label><select id="requiredVegetable" class="select"></select></div>
+              <div class="field"><label for="requiredMeat">肉类</label><select id="requiredMeat" class="select"></select></div>
+              <div class="field"><label for="requiredSnack">点心</label><select id="requiredSnack" class="select"></select></div>
+            </div>
+            <div class="tip" style="margin-top:16px">选项综合原菜单中的常用食材，并补充幼儿园常见食材；生成结果会避开豆制品、带刺鱼和带小骨食物。</div>
+          </div>
+        </div>
+
+        <div class="menu-builder-card" style="margin-top:18px">
+          <h4>固定生成规则</h4>
+          <ul class="menu-rule-list">
+            <li>每周主食至少安排1顿面食和1顿炒饭，其余米饭、杂粮饭轮换。</li>
+            <li>每天至少1个荤菜和2个素菜；肉、蛋、禽、虾仁轮换，蔬菜尽量不重复。</li>
+            <li>不使用豆制品，不生成带刺鱼、带小骨肉类或整粒坚果；水果采用适合切分的品种。</li>
+            <li>烹调名称以蒸、煮、炖、烩、清炒为主，减少油炸、高盐和高糖组合。</li>
+            <li>生成的工作表保留原模板的12列、两级表头、每日两行学段和合并单元格。</li>
+          </ul>
+        </div>
+
+        <div class="menu-generate-box">
+          <div><strong>生成菜谱 Excel</strong><span>文件将直接下载，并自动载入“食材统计”功能供核对。</span></div>
+          <button id="generateMenuBtn" class="btn btn-green" type="button">生成菜谱</button>
+        </div>
+        <div id="menuResult" class="menu-result" hidden></div>
+      </div>
+    </section>
+
+    <div id="analysisView">
     <section class="hero">
       <div class="hero-main">
         <p class="eyebrow">Menu Workbook → Purchase Workbook</p>
         <h2>上传菜谱 Excel，生成每日食材用量</h2>
         <p class="hero-copy">直接读取Excel单元格，自动忽略“第…周带量”。可指定只识别某一周；不填写周次时，自动统计文件内全部“第…周”工作表。</p>
         <div class="hero-tags">
-          <span class="hero-tag">GitHub版 V9</span>
+          <span class="hero-tag">GitHub版 V10</span>
           <span class="hero-tag">适配GitHub Pages</span>
           <span class="hero-tag">学生人数可修改</span>
           <span class="hero-tag">多周独立数据卡</span>
@@ -508,6 +608,7 @@
     </section>
 
     <div class="footer">Excel和识别数据均在当前浏览器处理；网页可直接部署到GitHub Pages。</div>
+    </div>
   </main>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
@@ -570,6 +671,279 @@
         ["2026-08-31", "午点", "玉米", 15, "蒸汽玉米", false],
         ["2026-08-31", "病号菜", "肉糜", 40, "清蒸肉丸", true],
       ];
+
+      const requiredVegetableOptions = ["无", "青菜", "鸡毛菜", "小白菜", "杭白菜", "娃娃菜", "菠菜", "油麦菜", "生菜", "西兰花", "花菜", "菜心", "茼蒿", "芹菜", "韭菜", "黄瓜", "番茄", "冬瓜", "南瓜", "胡萝卜", "白萝卜", "土豆", "山药", "莴笋", "茄子", "西葫芦", "丝瓜", "莲藕", "芦笋", "彩椒", "蘑菇", "杏鲍菇", "白玉菇", "黑木耳"];
+      const requiredMeatOptions = ["无", "夹心肉", "猪里脊", "牛肉", "鸡胸肉", "鸭胸肉", "虾仁", "鱿鱼", "干贝", "鸡蛋"];
+      const requiredSnackOptions = ["无", "手指饼干", "小熊饼干", "牛奶饼干", "黄油饼干", "菜园饼干", "南瓜馒头", "杂粮馒头", "刀切馒头", "小花卷", "黑米糕", "玉米糕", "蒸南瓜", "蒸山药", "蒸玉米", "小香薯", "红糖发糕", "蔓越莓发糕"];
+
+      const meatDishes = [
+        { name: "清蒸肉饼", ingredients: [["夹心肉", 45], ["香菇", 5]] },
+        { name: "彩椒牛肉丝", ingredients: [["牛肉", 35], ["彩椒", 15]] },
+        { name: "香菇滑鸡丁", ingredients: [["鸡胸肉", 40], ["香菇", 10]] },
+        { name: "芹菜鸭丝", ingredients: [["鸭胸肉", 35], ["芹菜", 15]] },
+        { name: "西兰花炒虾仁", ingredients: [["虾仁", 35], ["西兰花", 20]] },
+        { name: "彩椒炒鱿鱼", ingredients: [["鱿鱼", 35], ["彩椒", 15]] },
+        { name: "黄瓜炒干贝", ingredients: [["干贝", 25], ["黄瓜", 25]] },
+        { name: "番茄炒蛋", ingredients: [["鸡蛋", 40], ["番茄", 30]] },
+      ];
+      const vegetableDishes = [
+        { name: "清炒青菜", ingredients: [["青菜", 60]] },
+        { name: "蒜蓉菠菜", ingredients: [["菠菜", 60], ["大蒜", 1]] },
+        { name: "清炒油麦菜", ingredients: [["油麦菜", 60]] },
+        { name: "西兰花炒胡萝卜", ingredients: [["西兰花", 45], ["胡萝卜", 15]] },
+        { name: "香菇菜心", ingredients: [["菜心", 50], ["香菇", 10]] },
+        { name: "清炒茼蒿", ingredients: [["茼蒿", 60]] },
+        { name: "黄瓜炒木耳", ingredients: [["黄瓜", 50], ["黑木耳", 10]] },
+        { name: "番茄炒花菜", ingredients: [["花菜", 45], ["番茄", 15]] },
+        { name: "莴笋炒山药", ingredients: [["莴笋", 40], ["山药", 20]] },
+        { name: "清炒娃娃菜", ingredients: [["娃娃菜", 60]] },
+        { name: "杏鲍菇炒彩椒", ingredients: [["杏鲍菇", 40], ["彩椒", 20]] },
+        { name: "清炒西葫芦", ingredients: [["西葫芦", 60]] },
+        { name: "清炒芦笋", ingredients: [["芦笋", 60]] },
+        { name: "南瓜烩百合", ingredients: [["南瓜", 50], ["百合", 10]] },
+      ];
+      const soupDishes = [
+        { name: "番茄蛋花汤", ingredients: [["番茄", 15], ["鸡蛋", 10]] },
+        { name: "冬瓜鸡丝汤", ingredients: [["冬瓜", 20], ["鸡胸肉", 8]] },
+        { name: "菌菇青菜汤", ingredients: [["白玉菇", 10], ["青菜", 10]] },
+        { name: "丝瓜虾仁汤", ingredients: [["丝瓜", 15], ["虾仁", 8]] },
+        { name: "萝卜牛肉羹", ingredients: [["白萝卜", 15], ["牛肉", 8]] },
+        { name: "娃娃菜粉丝汤", ingredients: [["娃娃菜", 15], ["粉丝", 5]] },
+        { name: "玉米鸡蓉羹", ingredients: [["粟米", 15], ["鸡胸肉", 8]] },
+      ];
+      const fruitDishes = [
+        { name: "苹果块", ingredients: [["苹果", 50]] }, { name: "雪梨块", ingredients: [["雪梨", 50]] },
+        { name: "香蕉", ingredients: [["香蕉", 60]] }, { name: "火龙果", ingredients: [["火龙果", 50]] },
+        { name: "橙子", ingredients: [["橙子", 50]] }, { name: "哈密瓜", ingredients: [["哈密瓜", 50]] },
+        { name: "猕猴桃", ingredients: [["猕猴桃", 50]] },
+      ];
+      const afternoonSnacks = [
+        "南瓜小米粥\n（南瓜10g、小米10g、大米10g）\n刀切馒头\n（面粉15g）",
+        "雪梨银耳羹\n（雪梨10g、银耳2g）\n玉米糕\n（玉米粉5g、面粉10g）",
+        "青菜瘦肉粥\n（青菜10g、夹心肉5g、大米15g）\n蒸山药\n（山药15g）",
+        "红枣燕麦粥\n（红枣3g、燕麦5g、大米15g）\n小花卷\n（面粉15g）",
+        "奶香核桃露\n（核桃粉5g、奶粉5g）\n红糖发糕\n（红糖3g、面粉15g）",
+      ];
+
+      function recipeText(recipe) {
+        return `${recipe.name}\n（${recipe.ingredients.map(([name, grams]) => `${name}${grams}g`).join("、")}）`;
+      }
+
+      function requiredVegetableDish(name) {
+        const match = vegetableDishes.find((dish) => dish.ingredients.some(([ingredient]) => ingredient === name));
+        return match || { name: `清炒${name}`, ingredients: [[name, 60]] };
+      }
+
+      function requiredMeatDish(name) {
+        const match = meatDishes.find((dish) => dish.ingredients.some(([ingredient]) => ingredient === name));
+        if (match) return match;
+        if (name === "猪里脊") return { name: "彩椒里脊丝", ingredients: [["猪里脊", 40], ["彩椒", 10]] };
+        return { name: `${name}蒸蛋`, ingredients: [[name, 20], ["鸡蛋", 30]] };
+      }
+
+      function snackPortion(name) {
+        if (/饼干/.test(name)) return `${name}4g`;
+        if (/玉米|山药|南瓜|香薯/.test(name)) return `${name}20g`;
+        return `${name}15g`;
+      }
+
+      function addDaysIso(iso, days) {
+        const date = new Date(`${iso}T12:00:00`);
+        date.setDate(date.getDate() + days);
+        return formatDate(date);
+      }
+
+      function normalizeMondayIso(iso) {
+        if (!validIsoDate(iso)) return getMonday();
+        return getMonday(new Date(`${iso}T12:00:00`));
+      }
+
+      function integerToChinese(value) {
+        const number = Math.max(1, Math.min(99, Math.trunc(Number(value) || 1)));
+        const digits = ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九"];
+        if (number < 10) return digits[number];
+        const tens = Math.floor(number / 10);
+        const ones = number % 10;
+        return `${tens === 1 ? "" : digits[tens]}十${ones ? digits[ones] : ""}`;
+      }
+
+      function menuDateLabel(iso) {
+        const date = new Date(`${iso}T12:00:00`);
+        return `${weekdayName(iso)}\n${date.getMonth() + 1}/${date.getDate()}`;
+      }
+
+      function menuDateRange(startIso) {
+        const start = new Date(`${startIso}T12:00:00`);
+        const endIso = addDaysIso(startIso, 6);
+        const end = new Date(`${endIso}T12:00:00`);
+        return `${start.getFullYear()}/${start.getMonth() + 1}/${start.getDate()}--${end.getFullYear()}/${end.getMonth() + 1}/${end.getDate()}`;
+      }
+
+      function buildWeeklyMenu(weekIndex, startIso, constraints) {
+        const riceStaples = [
+          { name: "大米饭", ingredients: [["大米", 50]] },
+          { name: "小米饭", ingredients: [["小米", 5], ["大米", 45]] },
+          { name: "燕麦饭", ingredients: [["燕麦", 5], ["大米", 45]] },
+          { name: "南瓜饭", ingredients: [["南瓜", 10], ["大米", 45]] },
+        ];
+        const noodle = { name: "鸡丝蔬菜面", ingredients: [["面条", 50], ["鸡胸肉", 20], ["青菜", 15], ["胡萝卜", 10]] };
+        const friedRice = { name: "鸡蛋蔬菜炒饭", ingredients: [["大米", 50], ["鸡蛋", 15], ["胡萝卜", 10], ["粟米", 10]] };
+        const noodleDay = weekIndex % 2;
+        const friedRiceDay = 2 + (weekIndex % 2);
+        const days = [];
+        for (let dayIndex = 0; dayIndex < 5; dayIndex += 1) {
+          const date = addDaysIso(startIso, dayIndex);
+          let staple = riceStaples[(weekIndex + dayIndex) % riceStaples.length];
+          if (dayIndex === noodleDay) staple = noodle;
+          if (dayIndex === friedRiceDay) staple = friedRice;
+          let meat = meatDishes[(weekIndex * 3 + dayIndex) % meatDishes.length];
+          let veg1 = vegetableDishes[(weekIndex * 4 + dayIndex * 2) % vegetableDishes.length];
+          let veg2 = vegetableDishes[(weekIndex * 4 + dayIndex * 2 + 1) % vegetableDishes.length];
+          if (dayIndex === 0 && constraints.vegetable !== "无") veg1 = requiredVegetableDish(constraints.vegetable);
+          if (dayIndex === 1 && constraints.meat !== "无") meat = requiredMeatDish(constraints.meat);
+          if (veg1.name === veg2.name) veg2 = vegetableDishes[(weekIndex + dayIndex + 5) % vegetableDishes.length];
+          const regularSnack = ["手指饼干4g", "小熊饼干4g", "牛奶饼干4g", "黄油饼干4g", "菜园饼干4g"][dayIndex];
+          const selectedSnack = dayIndex === 0 && constraints.snack !== "无" ? snackPortion(constraints.snack) : regularSnack;
+          days.push({
+            date,
+            breakfast: `奶粉（15g/人）\n托小班：90ml\n中班大班：100ml\n${selectedSnack}`,
+            staple: recipeText(staple),
+            dishes: [meat, veg1, veg2].map(recipeText).join("\n"),
+            soup: recipeText(soupDishes[(weekIndex + dayIndex) % soupDishes.length]),
+            pairing: dayIndex % 2 ? "海苔碎\n（海苔1g）" : "芝麻拌面\n（芝麻1g、面条15g）",
+            fruit: recipeText(fruitDishes[(weekIndex * 2 + dayIndex) % fruitDishes.length]),
+            snack: afternoonSnacks[(weekIndex + dayIndex) % afternoonSnacks.length],
+            sick: "清蒸肉丸\n（夹心肉40g）",
+            nutrition: dayIndex % 2 ? "奶香蒸蛋\n（鸡蛋30g、奶粉3g）" : "时蔬鸡肉羹\n（鸡胸肉20g、时蔬20g）",
+            dinner: dayIndex % 2 ? "番茄牛肉烩饭\n（番茄20g、牛肉20g、大米40g）" : "鸡丝蔬菜粥\n（鸡胸肉15g、青菜15g、大米35g）",
+          });
+        }
+        return days;
+      }
+
+      function fillMenuSelect(id, options) {
+        $(id).innerHTML = options.map((option) => `<option value="${escapeHtml(option)}">${escapeHtml(option)}</option>`).join("");
+      }
+
+      function setMode(mode) {
+        const menuMode = mode === "menu";
+        $("analysisView").hidden = menuMode;
+        $("menuBuilderView").hidden = !menuMode;
+        $("analysisModeBtn").classList.toggle("active", !menuMode);
+        $("menuModeBtn").classList.toggle("active", menuMode);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      function applyMenuGridStyle(worksheet) {
+        const border = {
+          top: { style: "thin", color: { argb: "FF000000" } }, bottom: { style: "thin", color: { argb: "FF000000" } },
+          left: { style: "thin", color: { argb: "FF000000" } }, right: { style: "thin", color: { argb: "FF000000" } },
+        };
+        for (let row = 3; row <= 14; row += 1) {
+          for (let column = 1; column <= 12; column += 1) {
+            const cell = worksheet.getCell(row, column);
+            cell.font = { name: "宋体", size: 16, color: { argb: "FF000000" } };
+            cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+            cell.border = border;
+          }
+        }
+      }
+
+      function createMenuSheet(workbook, name, school, startIso, days) {
+        const worksheet = workbook.addWorksheet(name, { views: [{ showGridLines: false }] });
+        [9.58, 20.71, 13.57, 13, 40.35, 25, 19.7, 13.74, 25.85, 24.43, 15.9, 28.57].forEach((width, index) => { worksheet.getColumn(index + 1).width = width; });
+        worksheet.getRow(1).height = 33;
+        worksheet.getRow(2).height = 29.25;
+        worksheet.getRow(3).height = 34;
+        worksheet.getRow(4).height = 34;
+        for (let row = 5; row <= 14; row += 1) worksheet.getRow(row).height = 64;
+
+        worksheet.getCell("A1").value = "每 周 菜 谱 登 记";
+        worksheet.getCell("A2").value = school;
+        worksheet.getCell("D2").value = name;
+        worksheet.getCell("I2").value = menuDateRange(startIso);
+        [["A3", "星期"], ["B3", "早点"], ["C3", "午餐"], ["C4", "主食"], ["D4", "年龄组"], ["E4", "菜"], ["F4", "汤"], ["G3", "搭配"], ["H3", "水果"], ["I3", "午点"], ["J3", "病号菜"], ["K3", "营养餐"], ["L3", "推荐晚餐"]].forEach(([cell, value]) => { worksheet.getCell(cell).value = value; });
+
+        applyMenuGridStyle(worksheet);
+        worksheet.mergeCells("A1:J1");
+        worksheet.mergeCells("I2:J2");
+        ["A3:A4", "B3:B4", "C3:F3", "G3:G4", "H3:H4", "I3:I4", "J3:J4", "K3:K4", "L3:L4"].forEach((range) => worksheet.mergeCells(range));
+        days.forEach((day, index) => {
+          const top = 5 + index * 2;
+          const bottom = top + 1;
+          worksheet.getCell(top, 1).value = menuDateLabel(day.date);
+          worksheet.getCell(top, 2).value = day.breakfast;
+          worksheet.getCell(top, 3).value = day.staple;
+          worksheet.getCell(top, 4).value = "托班小班";
+          worksheet.getCell(bottom, 4).value = "中班大班";
+          worksheet.getCell(top, 5).value = day.dishes;
+          worksheet.getCell(top, 6).value = day.soup;
+          worksheet.getCell(top, 7).value = day.pairing;
+          worksheet.getCell(top, 8).value = day.fruit;
+          worksheet.getCell(top, 9).value = day.snack;
+          worksheet.getCell(top, 10).value = day.sick;
+          worksheet.getCell(top, 11).value = day.nutrition;
+          worksheet.getCell(top, 12).value = day.dinner;
+          [1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12].forEach((column) => worksheet.mergeCells(top, column, bottom, column));
+        });
+        worksheet.getCell("A1").font = { name: "宋体", size: 22, bold: true };
+        worksheet.getCell("A1").alignment = { horizontal: "center", vertical: "middle" };
+        ["A2", "D2"].forEach((address) => {
+          worksheet.getCell(address).font = { name: "宋体", size: 16 };
+          worksheet.getCell(address).alignment = { horizontal: "center", vertical: "middle" };
+        });
+        worksheet.getCell("I2").font = { name: "Times New Roman", size: 16 };
+        worksheet.getCell("I2").alignment = { horizontal: "right", vertical: "middle" };
+        worksheet.pageSetup = { orientation: "landscape", paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 1, horizontalCentered: true, margins: { left: 0.25, right: 0.25, top: 0.35, bottom: 0.35, header: 0.1, footer: 0.1 }, printArea: "A1:L14" };
+        return worksheet;
+      }
+
+      async function generateMenuWorkbook() {
+        const button = $("generateMenuBtn");
+        if (!window.ExcelJS) return showToast("Excel组件尚未加载，请刷新页面后重试");
+        const weekCount = Math.max(1, Math.min(20, Math.trunc(Number($("menuWeekCount").value) || 1)));
+        const startWeek = Math.max(1, Math.min(99, Math.trunc(Number($("menuStartWeek").value) || 1)));
+        const startIso = normalizeMondayIso($("menuStartDate").value || state.defaultDate);
+        const school = $("menuSchoolName").value.trim() || "幼儿园";
+        const constraints = { vegetable: $("requiredVegetable").value, meat: $("requiredMeat").value, snack: $("requiredSnack").value };
+        $("menuStartDate").value = startIso;
+        button.disabled = true;
+        button.textContent = "正在生成…";
+        try {
+          const workbook = new ExcelJS.Workbook();
+          workbook.creator = "幼儿园食材用量与菜谱工具";
+          workbook.created = new Date();
+          for (let index = 0; index < weekCount; index += 1) {
+            const weekNumber = startWeek + index;
+            const weekName = `第${integerToChinese(weekNumber)}周`;
+            const weekStart = addDaysIso(startIso, index * 7);
+            createMenuSheet(workbook, weekName, school, weekStart, buildWeeklyMenu(index, weekStart, constraints));
+          }
+          const buffer = await workbook.xlsx.writeBuffer();
+          const lastWeek = startWeek + weekCount - 1;
+          const rangeName = weekCount === 1 ? `第${integerToChinese(startWeek)}周` : `第${integerToChinese(startWeek)}周至第${integerToChinese(lastWeek)}周`;
+          const fileName = `幼儿园菜谱_${rangeName}_${startIso}.xlsx`;
+          const mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+          const blob = new Blob([buffer], { type: mime });
+          triggerBlobDownload(blob, fileName);
+          if (typeof File !== "undefined") {
+            const generatedFile = new File([buffer], fileName, { type: mime });
+            $("targetWeek").value = "";
+            await handleExcel(generatedFile);
+          }
+          const selected = [constraints.vegetable, constraints.meat, constraints.snack].filter((value) => value && value !== "无");
+          $("menuResult").hidden = false;
+          $("menuResult").innerHTML = `<strong>已生成 ${weekCount} 周菜谱：</strong>${escapeHtml(rangeName)}，共 ${weekCount * 5} 个工作日。${selected.length ? `每周已安排必需食材：${selected.map(escapeHtml).join("、")}。` : "未指定必需食材。"}<br>文件已下载，并已自动载入食材统计供核对。`;
+          setMode("menu");
+          showToast("菜谱Excel已生成并开始下载");
+        } catch (error) {
+          console.error(error);
+          showToast("菜谱生成失败，请刷新页面后重试");
+        } finally {
+          button.disabled = false;
+          button.textContent = "生成菜谱";
+        }
+      }
 
       function getMonday(date = new Date()) {
         const d = new Date(date);
@@ -1819,6 +2193,13 @@
       }
 
       state.defaultDate = getMonday();
+      $("menuStartDate").value = state.defaultDate;
+      fillMenuSelect("requiredVegetable", requiredVegetableOptions);
+      fillMenuSelect("requiredMeat", requiredMeatOptions);
+      fillMenuSelect("requiredSnack", requiredSnackOptions);
+      $("analysisModeBtn").addEventListener("click", () => setMode("analysis"));
+      $("menuModeBtn").addEventListener("click", () => setMode("menu"));
+      $("generateMenuBtn").addEventListener("click", generateMenuWorkbook);
       $("studentCount").addEventListener("input", updateComputedCells);
       $("excelInput").addEventListener("change", (event) => handleExcel(event.target.files[0]));
       $("removeExcelBtn").addEventListener("click", removeExcel);
