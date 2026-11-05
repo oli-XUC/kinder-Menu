@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#1f4e78">
-  <title>幼儿园食材用量与菜谱工具 V10</title>
+  <title>幼儿园食材用量与菜谱工具 V11</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
@@ -441,7 +441,7 @@
         <div class="brand-mark" aria-hidden="true">▦</div>
         <div>
           <h1>幼儿园食材用量与菜谱工具</h1>
-          <p>Excel精准读取 · 菜谱智能生成 · 多周独立统计 · V10</p>
+          <p>Excel精准读取 · 菜谱智能生成 · 多周独立统计 · V11</p>
         </div>
       </div>
       <div class="topbar-actions">
@@ -482,7 +482,7 @@
               <div class="field"><label for="requiredMeat">肉类</label><select id="requiredMeat" class="select"></select></div>
               <div class="field"><label for="requiredSnack">点心</label><select id="requiredSnack" class="select"></select></div>
             </div>
-            <div class="tip" style="margin-top:16px">选项综合原菜单中的常用食材，并补充幼儿园常见食材；生成结果会避开豆制品、带刺鱼和带小骨食物。</div>
+            <div class="tip" style="margin-top:16px">选项综合原菜单中的常用食材，并补充幼儿园常见食材；午餐菜谱会避开豆制品、带刺鱼和带小骨食物，早点和营养餐固定沿用上传模板。</div>
           </div>
         </div>
 
@@ -491,7 +491,8 @@
           <ul class="menu-rule-list">
             <li>每周主食至少安排1顿面食和1顿炒饭，其余米饭、杂粮饭轮换。</li>
             <li>每天至少1个荤菜和2个素菜；肉、蛋、禽、虾仁轮换，蔬菜尽量不重复。</li>
-            <li>不使用豆制品，不生成带刺鱼、带小骨肉类或整粒坚果；水果采用适合切分的品种。</li>
+            <li>午餐菜谱不使用豆制品，不生成带刺鱼、带小骨肉类或整粒坚果；早点和营养餐固定沿用上传模板。</li>
+            <li>推荐晚餐固定包含饭、荤菜、素菜和汤，并避开当天白天已经安排的同名菜品。</li>
             <li>烹调名称以蒸、煮、炖、烩、清炒为主，减少油炸、高盐和高糖组合。</li>
             <li>生成的工作表保留原模板的12列、两级表头、每日两行学段和合并单元格。</li>
           </ul>
@@ -512,7 +513,7 @@
         <h2>上传菜谱 Excel，生成每日食材用量</h2>
         <p class="hero-copy">直接读取Excel单元格，自动忽略“第…周带量”。可指定只识别某一周；不填写周次时，自动统计文件内全部“第…周”工作表。</p>
         <div class="hero-tags">
-          <span class="hero-tag">GitHub版 V10</span>
+          <span class="hero-tag">GitHub版 V11</span>
           <span class="hero-tag">适配GitHub Pages</span>
           <span class="hero-tag">学生人数可修改</span>
           <span class="hero-tag">多周独立数据卡</span>
@@ -703,19 +704,32 @@
         { name: "南瓜烩百合", ingredients: [["南瓜", 50], ["百合", 10]] },
       ];
       const soupDishes = [
-        { name: "番茄蛋花汤", ingredients: [["番茄", 15], ["鸡蛋", 10]] },
-        { name: "冬瓜鸡丝汤", ingredients: [["冬瓜", 20], ["鸡胸肉", 8]] },
-        { name: "菌菇青菜汤", ingredients: [["白玉菇", 10], ["青菜", 10]] },
-        { name: "丝瓜虾仁汤", ingredients: [["丝瓜", 15], ["虾仁", 8]] },
-        { name: "萝卜牛肉羹", ingredients: [["白萝卜", 15], ["牛肉", 8]] },
-        { name: "娃娃菜粉丝汤", ingredients: [["娃娃菜", 15], ["粉丝", 5]] },
-        { name: "玉米鸡蓉羹", ingredients: [["粟米", 15], ["鸡胸肉", 8]] },
+        { name: "番茄菠菜蛋花汤", ingredients: [["番茄", 15], ["菠菜", 10], ["鸡蛋", 10]] },
+        { name: "冬瓜菌菇鸡丝汤", ingredients: [["冬瓜", 20], ["白玉菇", 10], ["鸡胸肉", 8]] },
+        { name: "菌菇胡萝卜青菜汤", ingredients: [["白玉菇", 10], ["胡萝卜", 8], ["青菜", 10]] },
+        { name: "丝瓜紫菜虾仁汤", ingredients: [["丝瓜", 15], ["紫菜", 1], ["虾仁", 8]] },
+        { name: "萝卜香菜牛肉羹", ingredients: [["白萝卜", 15], ["香菜", 2], ["牛肉", 8]] },
+        { name: "娃娃菜菌菇粉丝汤", ingredients: [["娃娃菜", 15], ["白玉菇", 8], ["粉丝", 5]] },
+        { name: "玉米胡萝卜鸡蓉羹", ingredients: [["粟米", 15], ["胡萝卜", 8], ["鸡胸肉", 8]] },
       ];
       const fruitDishes = [
-        { name: "苹果块", ingredients: [["苹果", 50]] }, { name: "雪梨块", ingredients: [["雪梨", 50]] },
-        { name: "香蕉", ingredients: [["香蕉", 60]] }, { name: "火龙果", ingredients: [["火龙果", 50]] },
-        { name: "橙子", ingredients: [["橙子", 50]] }, { name: "哈密瓜", ingredients: [["哈密瓜", 50]] },
-        { name: "猕猴桃", ingredients: [["猕猴桃", 50]] },
+        { name: "小番茄", ingredients: [["小番茄", 50]] }, { name: "提子", ingredients: [["提子", 50]] },
+        { name: "草莓", ingredients: [["草莓", 50]] }, { name: "蓝莓", ingredients: [["蓝莓", 40]] },
+        { name: "金桔", ingredients: [["金桔", 50]] },
+      ];
+      const fixedBreakfasts = [
+        "奶粉（15g/人） 托小班：90ml 中班：100ml 大班：110ml\n手指饼干3g\n小熊小饼4g",
+        "奶粉（15g/人） 托小班：90ml 中班：100ml 大班：110ml\n南瓜馒头3g\n牛奶饼干4g",
+        "奶粉（15g/人） 托小班：90ml 中班：100ml 大班：110ml\n佩奇曲奇4g\n黄油饼干3g",
+        "奶粉（15g/人） 托小班：90ml 中班：100ml 大班：110ml\n闲趣饼干3g\n菜园小饼4g",
+        "奶粉（15g/人） 托小班：90ml 中班：100ml 大班：110ml\n脆谷乐3g\n黑米糕4g",
+      ];
+      const fixedNutritionMeals = [
+        "蜜汁兰花干\n（兰花干20g）",
+        "青菜包\n（1个）",
+        "卤猪肝\n（猪肝20g）",
+        "蜜汁红枣\n（无核红枣20g）",
+        "炖蛋\n（鸡蛋20g）",
       ];
       const afternoonSnacks = [
         "南瓜小米粥\n（南瓜10g、小米10g、大米10g）\n刀切馒头\n（面粉15g）",
@@ -723,6 +737,44 @@
         "青菜瘦肉粥\n（青菜10g、夹心肉5g、大米15g）\n蒸山药\n（山药15g）",
         "红枣燕麦粥\n（红枣3g、燕麦5g、大米15g）\n小花卷\n（面粉15g）",
         "奶香核桃露\n（核桃粉5g、奶粉5g）\n红糖发糕\n（红糖3g、面粉15g）",
+      ];
+      const dinnerMenus = [
+        [
+          { name: "燕麦饭", ingredients: [["燕麦", 5], ["大米", 45]] },
+          { name: "南瓜蒸肉饼", ingredients: [["南瓜", 20], ["夹心肉", 35]] },
+          { name: "蒜蓉生菜", ingredients: [["生菜", 60], ["大蒜", 1]] },
+          { name: "紫菜番茄蛋花汤", ingredients: [["紫菜", 1], ["番茄", 10], ["鸡蛋", 10]] },
+        ],
+        [
+          { name: "小米饭", ingredients: [["小米", 5], ["大米", 45]] },
+          { name: "土豆炖牛肉", ingredients: [["土豆", 25], ["牛肉", 35]] },
+          { name: "清炒杭白菜", ingredients: [["杭白菜", 60]] },
+          { name: "菌菇冬瓜汤", ingredients: [["白玉菇", 10], ["冬瓜", 15], ["胡萝卜", 5]] },
+        ],
+        [
+          { name: "大米饭", ingredients: [["大米", 50]] },
+          { name: "芦笋鸡丁", ingredients: [["芦笋", 20], ["鸡胸肉", 35]] },
+          { name: "清炒茼蒿", ingredients: [["茼蒿", 60]] },
+          { name: "萝卜菠菜蛋花汤", ingredients: [["白萝卜", 15], ["菠菜", 10], ["鸡蛋", 10]] },
+        ],
+        [
+          { name: "荞麦饭", ingredients: [["荞麦", 5], ["大米", 45]] },
+          { name: "虾仁蒸蛋", ingredients: [["虾仁", 12], ["鸡蛋", 30]] },
+          { name: "莴笋炒山药", ingredients: [["莴笋", 40], ["山药", 20]] },
+          { name: "青菜菌菇粉丝汤", ingredients: [["青菜", 10], ["白玉菇", 8], ["粉丝", 5]] },
+        ],
+        [
+          { name: "南瓜饭", ingredients: [["南瓜", 10], ["大米", 45]] },
+          { name: "彩椒里脊丝", ingredients: [["彩椒", 15], ["猪里脊", 35]] },
+          { name: "蒜蓉菠菜", ingredients: [["菠菜", 60], ["大蒜", 1]] },
+          { name: "玉米蘑菇羹", ingredients: [["粟米", 15], ["蘑菇", 10], ["鸡蛋", 8]] },
+        ],
+        [
+          { name: "紫米饭", ingredients: [["紫米", 5], ["大米", 45]] },
+          { name: "香菇鸭丝", ingredients: [["鸭胸肉", 35], ["香菇", 15]] },
+          { name: "清炒娃娃菜", ingredients: [["娃娃菜", 60]] },
+          { name: "丝瓜胡萝卜肉丸汤", ingredients: [["丝瓜", 15], ["胡萝卜", 8], ["夹心肉", 10]] },
+        ],
       ];
 
       function recipeText(recipe) {
@@ -745,6 +797,15 @@
         if (/饼干/.test(name)) return `${name}4g`;
         if (/玉米|山药|南瓜|香薯/.test(name)) return `${name}20g`;
         return `${name}15g`;
+      }
+
+      function dinnerForDay(dayIndex, weekIndex, daytimeRecipes) {
+        const daytimeNames = new Set(daytimeRecipes.map((item) => item.name));
+        for (let offset = 0; offset < dinnerMenus.length; offset += 1) {
+          const menu = dinnerMenus[(weekIndex * 2 + dayIndex + offset) % dinnerMenus.length];
+          if (menu.every((item) => !daytimeNames.has(item.name))) return menu.map(recipeText).join("\n");
+        }
+        return dinnerMenus[(weekIndex + dayIndex) % dinnerMenus.length].map(recipeText).join("\n");
       }
 
       function addDaysIso(iso, days) {
@@ -802,20 +863,22 @@
           if (dayIndex === 0 && constraints.vegetable !== "无") veg1 = requiredVegetableDish(constraints.vegetable);
           if (dayIndex === 1 && constraints.meat !== "无") meat = requiredMeatDish(constraints.meat);
           if (veg1.name === veg2.name) veg2 = vegetableDishes[(weekIndex + dayIndex + 5) % vegetableDishes.length];
-          const regularSnack = ["手指饼干4g", "小熊饼干4g", "牛奶饼干4g", "黄油饼干4g", "菜园饼干4g"][dayIndex];
-          const selectedSnack = dayIndex === 0 && constraints.snack !== "无" ? snackPortion(constraints.snack) : regularSnack;
+          let afternoonSnack = afternoonSnacks[(weekIndex + dayIndex) % afternoonSnacks.length];
+          if (dayIndex === 0 && constraints.snack !== "无") afternoonSnack += `\n加餐\n（${snackPortion(constraints.snack)}）`;
+          const soup = soupDishes[(weekIndex + dayIndex) % soupDishes.length];
+          const fruit = fruitDishes[(weekIndex * 2 + dayIndex) % fruitDishes.length];
           days.push({
             date,
-            breakfast: `奶粉（15g/人）\n托小班：90ml\n中班大班：100ml\n${selectedSnack}`,
+            breakfast: fixedBreakfasts[dayIndex],
             staple: recipeText(staple),
             dishes: [meat, veg1, veg2].map(recipeText).join("\n"),
-            soup: recipeText(soupDishes[(weekIndex + dayIndex) % soupDishes.length]),
+            soup: recipeText(soup),
             pairing: dayIndex % 2 ? "海苔碎\n（海苔1g）" : "芝麻拌面\n（芝麻1g、面条15g）",
-            fruit: recipeText(fruitDishes[(weekIndex * 2 + dayIndex) % fruitDishes.length]),
-            snack: afternoonSnacks[(weekIndex + dayIndex) % afternoonSnacks.length],
-            sick: "清蒸肉丸\n（夹心肉40g）",
-            nutrition: dayIndex % 2 ? "奶香蒸蛋\n（鸡蛋30g、奶粉3g）" : "时蔬鸡肉羹\n（鸡胸肉20g、时蔬20g）",
-            dinner: dayIndex % 2 ? "番茄牛肉烩饭\n（番茄20g、牛肉20g、大米40g）" : "鸡丝蔬菜粥\n（鸡胸肉15g、青菜15g、大米35g）",
+            fruit: recipeText(fruit),
+            snack: afternoonSnack,
+            sick: "",
+            nutrition: fixedNutritionMeals[dayIndex],
+            dinner: dinnerForDay(dayIndex, weekIndex, [staple, meat, veg1, veg2, soup, fruit]),
           });
         }
         return days;
