@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#1f4e78">
-  <title>幼儿园食材用量与菜谱工具 V11</title>
+  <title>幼儿园食材用量与菜谱工具 V12</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
@@ -441,7 +441,7 @@
         <div class="brand-mark" aria-hidden="true">▦</div>
         <div>
           <h1>幼儿园食材用量与菜谱工具</h1>
-          <p>Excel精准读取 · 菜谱智能生成 · 多周独立统计 · V11</p>
+          <p>Excel精准读取 · 菜谱智能生成 · 多周独立统计 · V12</p>
         </div>
       </div>
       <div class="topbar-actions">
@@ -489,8 +489,8 @@
         <div class="menu-builder-card" style="margin-top:18px">
           <h4>固定生成规则</h4>
           <ul class="menu-rule-list">
-            <li>每周主食至少安排1顿面食和1顿炒饭，其余米饭、杂粮饭轮换。</li>
-            <li>每天至少1个荤菜和2个素菜；肉、蛋、禽、虾仁轮换，蔬菜尽量不重复。</li>
+            <li>每周安排1顿炒饭和1顿面食；主食栏只写“炒饭”或具体面食类别，具体菜名及不少于7种原料写入“菜”栏目。</li>
+            <li>每天至少1个荤菜和2个素菜；同一天不同菜品不重复食材，并优先选择本周使用次数较少的食材。</li>
             <li>午餐菜谱不使用豆制品，不生成带刺鱼、带小骨肉类或整粒坚果；早点和营养餐固定沿用上传模板。</li>
             <li>推荐晚餐固定包含饭、荤菜、素菜和汤，并避开当天白天已经安排的同名菜品。</li>
             <li>烹调名称以蒸、煮、炖、烩、清炒为主，减少油炸、高盐和高糖组合。</li>
@@ -513,7 +513,7 @@
         <h2>上传菜谱 Excel，生成每日食材用量</h2>
         <p class="hero-copy">直接读取Excel单元格，自动忽略“第…周带量”。可指定只识别某一周；不填写周次时，自动统计文件内全部“第…周”工作表。</p>
         <div class="hero-tags">
-          <span class="hero-tag">GitHub版 V11</span>
+          <span class="hero-tag">GitHub版 V12</span>
           <span class="hero-tag">适配GitHub Pages</span>
           <span class="hero-tag">学生人数可修改</span>
           <span class="hero-tag">多周独立数据卡</span>
@@ -711,6 +711,11 @@
         { name: "萝卜香菜牛肉羹", ingredients: [["白萝卜", 15], ["香菜", 2], ["牛肉", 8]] },
         { name: "娃娃菜菌菇粉丝汤", ingredients: [["娃娃菜", 15], ["白玉菇", 8], ["粉丝", 5]] },
         { name: "玉米胡萝卜鸡蓉羹", ingredients: [["粟米", 15], ["胡萝卜", 8], ["鸡胸肉", 8]] },
+        { name: "莲藕雪梨里脊汤", ingredients: [["莲藕", 15], ["雪梨", 10], ["猪里脊", 8]] },
+        { name: "芹菜土豆肉末羹", ingredients: [["芹菜", 10], ["土豆", 15], ["夹心肉", 8]] },
+        { name: "南瓜百合蛋花羹", ingredients: [["南瓜", 15], ["百合", 5], ["鸡蛋", 8]] },
+        { name: "花菜蘑菇鸭丝汤", ingredients: [["花菜", 15], ["蘑菇", 8], ["鸭胸肉", 8]] },
+        { name: "海带黄瓜干贝汤", ingredients: [["海带", 3], ["黄瓜", 15], ["干贝", 8]] },
       ];
       const fruitDishes = [
         { name: "小番茄", ingredients: [["小番茄", 50]] }, { name: "提子", ingredients: [["提子", 50]] },
@@ -737,6 +742,31 @@
         "青菜瘦肉粥\n（青菜10g、夹心肉5g、大米15g）\n蒸山药\n（山药15g）",
         "红枣燕麦粥\n（红枣3g、燕麦5g、大米15g）\n小花卷\n（面粉15g）",
         "奶香核桃露\n（核桃粉5g、奶粉5g）\n红糖发糕\n（红糖3g、面粉15g）",
+      ];
+      const friedRiceMeals = [
+        { label: "炒饭", recipe: { name: "鱿鱼炒饭", ingredients: [["大米", 45], ["鱿鱼", 25], ["鸡蛋", 15], ["胡萝卜", 8], ["粟米", 8], ["黄瓜", 8], ["彩椒", 8]] } },
+        { label: "炒饭", recipe: { name: "虾仁炒饭", ingredients: [["大米", 45], ["虾仁", 25], ["鸡蛋", 15], ["西兰花", 8], ["南瓜", 8], ["香菇", 5], ["洋葱", 5]] } },
+        { label: "炒饭", recipe: { name: "鸡丁炒饭", ingredients: [["大米", 45], ["鸡胸肉", 25], ["鸡蛋", 15], ["青菜", 8], ["胡萝卜", 8], ["蘑菇", 5], ["彩椒", 5]] } },
+        { label: "炒饭", recipe: { name: "牛肉彩蔬炒饭", ingredients: [["大米", 45], ["牛肉", 25], ["鸡蛋", 15], ["芹菜", 8], ["南瓜", 8], ["白玉菇", 5], ["番茄", 8]] } },
+      ];
+      const noodleMeals = [
+        { label: "通心面", recipe: { name: "彩蔬鸡肉通心面", ingredients: [["通心面", 50], ["鸡胸肉", 20], ["番茄", 10], ["西兰花", 10], ["粟米", 8], ["胡萝卜", 8], ["蘑菇", 5]] } },
+        { label: "乌冬面", recipe: { name: "虾仁乌冬面", ingredients: [["乌冬面", 50], ["虾仁", 20], ["青菜", 10], ["彩椒", 8], ["洋葱", 5], ["香菇", 5], ["鸡蛋", 15]] } },
+        { label: "炒面", recipe: { name: "鱿鱼炒面", ingredients: [["面条", 50], ["鱿鱼", 20], ["卷心菜", 10], ["胡萝卜", 8], ["韭黄", 8], ["黑木耳", 5], ["彩椒", 8]] } },
+        { label: "汤面", recipe: { name: "鸡丝蔬菜汤面", ingredients: [["面条", 50], ["鸡胸肉", 20], ["娃娃菜", 10], ["丝瓜", 8], ["白玉菇", 5], ["番茄", 8], ["鸡蛋", 15]] } },
+        { label: "水饺", recipe: { name: "荠菜鲜肉水饺", ingredients: [["饺子皮", 40], ["夹心肉", 20], ["荠菜", 10], ["胡萝卜", 8], ["香菇", 5], ["粟米", 8], ["鸡蛋", 10]] } },
+      ];
+      const pairingDishes = [
+        { name: "海苔碎", ingredients: [["海苔", 1]] },
+        { name: "芝麻拌南瓜", ingredients: [["芝麻", 1], ["南瓜", 15]] },
+        { name: "桂花藕片", ingredients: [["桂花", 1], ["莲藕", 15]] },
+        { name: "蜜汁山药", ingredients: [["蜂蜜", 1], ["山药", 15]] },
+        { name: "香菜蒸玉米", ingredients: [["香菜", 1], ["玉米", 15]] },
+        { name: "紫苏拌黄瓜", ingredients: [["紫苏", 1], ["黄瓜", 15]] },
+        { name: "椰蓉紫薯", ingredients: [["椰蓉", 1], ["紫薯", 15]] },
+        { name: "枸杞蒸芋艿", ingredients: [["枸杞", 1], ["芋艿", 15]] },
+        { name: "陈皮拌雪梨", ingredients: [["陈皮", 1], ["雪梨", 15]] },
+        { name: "葱香土豆", ingredients: [["香葱", 1], ["土豆", 15]] },
       ];
       const dinnerMenus = [
         [
@@ -799,13 +829,52 @@
         return `${name}15g`;
       }
 
+      function ingredientNames(recipe) {
+        return recipe.ingredients.map(([name]) => name);
+      }
+
+      function overlapCount(recipe, usedIngredients) {
+        return ingredientNames(recipe).filter((name) => usedIngredients.has(name)).length;
+      }
+
+      function weeklyScore(recipe, weeklyUsage) {
+        return ingredientNames(recipe).reduce((sum, name) => sum + (weeklyUsage.get(name) || 0), 0);
+      }
+
+      function chooseRecipe(pool, usedIngredients, weeklyUsage, seed = 0, usedDishNames = new Set()) {
+        const ordered = pool.map((_, index) => pool[(index + seed) % pool.length]);
+        const clean = ordered.filter((recipe) => overlapCount(recipe, usedIngredients) === 0);
+        const candidates = clean.length ? clean : ordered;
+        return candidates.map((recipe, index) => ({ recipe, index, repeatedDish: usedDishNames.has(recipe.name) ? 1 : 0, score: weeklyScore(recipe, weeklyUsage), overlap: overlapCount(recipe, usedIngredients) }))
+          .sort((a, b) => a.overlap - b.overlap || a.repeatedDish - b.repeatedDish || a.score - b.score || a.index - b.index)[0].recipe;
+      }
+
+      function chooseSpecialMeal(pool, usedIngredients, weeklyUsage, seed = 0, usedDishNames = new Set()) {
+        const ordered = pool.map((_, index) => pool[(index + seed) % pool.length]);
+        return ordered.map((item, index) => ({ item, index, repeatedDish: usedDishNames.has(item.recipe.name) ? 1 : 0, score: weeklyScore(item.recipe, weeklyUsage), overlap: overlapCount(item.recipe, usedIngredients) }))
+          .sort((a, b) => a.overlap - b.overlap || a.repeatedDish - b.repeatedDish || a.score - b.score || a.index - b.index)[0].item;
+      }
+
+      function commitRecipe(recipe, usedIngredients, weeklyUsage, usedDishNames = null) {
+        for (const name of ingredientNames(recipe)) {
+          usedIngredients.add(name);
+          weeklyUsage.set(name, (weeklyUsage.get(name) || 0) + 1);
+        }
+        if (usedDishNames) usedDishNames.add(recipe.name);
+        return recipe;
+      }
+
       function dinnerForDay(dayIndex, weekIndex, daytimeRecipes) {
         const daytimeNames = new Set(daytimeRecipes.map((item) => item.name));
-        for (let offset = 0; offset < dinnerMenus.length; offset += 1) {
-          const menu = dinnerMenus[(weekIndex * 2 + dayIndex + offset) % dinnerMenus.length];
-          if (menu.every((item) => !daytimeNames.has(item.name))) return menu.map(recipeText).join("\n");
-        }
-        return dinnerMenus[(weekIndex + dayIndex) % dinnerMenus.length].map(recipeText).join("\n");
+        const daytimeIngredients = new Set(daytimeRecipes.flatMap(ingredientNames));
+        const candidates = dinnerMenus.map((_, offset) => dinnerMenus[(weekIndex * 2 + dayIndex + offset) % dinnerMenus.length]);
+        const selected = candidates.map((menu, index) => ({
+          menu,
+          index,
+          duplicateNames: menu.filter((item) => daytimeNames.has(item.name)).length,
+          ingredientOverlap: menu.flatMap(ingredientNames).filter((name) => daytimeIngredients.has(name)).length,
+        })).sort((a, b) => a.duplicateNames - b.duplicateNames || a.ingredientOverlap - b.ingredientOverlap || a.index - b.index)[0].menu;
+        return selected.map(recipeText).join("\n");
       }
 
       function addDaysIso(iso, days) {
@@ -846,39 +915,80 @@
           { name: "小米饭", ingredients: [["小米", 5], ["大米", 45]] },
           { name: "燕麦饭", ingredients: [["燕麦", 5], ["大米", 45]] },
           { name: "南瓜饭", ingredients: [["南瓜", 10], ["大米", 45]] },
+          { name: "紫米饭", ingredients: [["紫米", 5], ["大米", 45]] },
+          { name: "荞麦饭", ingredients: [["荞麦", 5], ["大米", 45]] },
         ];
-        const noodle = { name: "鸡丝蔬菜面", ingredients: [["面条", 50], ["鸡胸肉", 20], ["青菜", 15], ["胡萝卜", 10]] };
-        const friedRice = { name: "鸡蛋蔬菜炒饭", ingredients: [["大米", 50], ["鸡蛋", 15], ["胡萝卜", 10], ["粟米", 10]] };
         const noodleDay = weekIndex % 2;
         const friedRiceDay = 2 + (weekIndex % 2);
+        const normalDays = [0, 1, 2, 3, 4].filter((day) => day !== noodleDay && day !== friedRiceDay);
+        const requiredVegetableDay = constraints.vegetable !== "无" ? normalDays[0] : -1;
+        const requiredMeatDay = constraints.meat !== "无" ? normalDays[1] : -1;
+        const requiredVegetableRecipe = requiredVegetableDay >= 0 ? requiredVegetableDish(constraints.vegetable) : null;
+        const requiredMeatRecipe = requiredMeatDay >= 0 ? requiredMeatDish(constraints.meat) : null;
+        const weeklyUsage = new Map();
+        for (const recipe of [requiredVegetableRecipe, requiredMeatRecipe].filter(Boolean)) {
+          for (const name of ingredientNames(recipe)) weeklyUsage.set(name, 1);
+        }
+        const usedDishNames = new Set([requiredVegetableRecipe?.name, requiredMeatRecipe?.name].filter(Boolean));
         const days = [];
         for (let dayIndex = 0; dayIndex < 5; dayIndex += 1) {
           const date = addDaysIso(startIso, dayIndex);
-          let staple = riceStaples[(weekIndex + dayIndex) % riceStaples.length];
-          if (dayIndex === noodleDay) staple = noodle;
-          if (dayIndex === friedRiceDay) staple = friedRice;
-          let meat = meatDishes[(weekIndex * 3 + dayIndex) % meatDishes.length];
-          let veg1 = vegetableDishes[(weekIndex * 4 + dayIndex * 2) % vegetableDishes.length];
-          let veg2 = vegetableDishes[(weekIndex * 4 + dayIndex * 2 + 1) % vegetableDishes.length];
-          if (dayIndex === 0 && constraints.vegetable !== "无") veg1 = requiredVegetableDish(constraints.vegetable);
-          if (dayIndex === 1 && constraints.meat !== "无") meat = requiredMeatDish(constraints.meat);
-          if (veg1.name === veg2.name) veg2 = vegetableDishes[(weekIndex + dayIndex + 5) % vegetableDishes.length];
+          const usedIngredients = new Set();
+          let forcedVegetable = dayIndex === requiredVegetableDay ? requiredVegetableRecipe : null;
+          let forcedMeat = dayIndex === requiredMeatDay ? requiredMeatRecipe : null;
+          if (forcedVegetable) commitRecipe(forcedVegetable, usedIngredients, weeklyUsage, usedDishNames);
+          if (forcedMeat) commitRecipe(forcedMeat, usedIngredients, weeklyUsage, usedDishNames);
+
+          let stapleRecipe = null;
+          let stapleText = "";
+          let mainDish = forcedMeat;
+          if (dayIndex === friedRiceDay) {
+            const special = chooseSpecialMeal(friedRiceMeals, usedIngredients, weeklyUsage, weekIndex + dayIndex, usedDishNames);
+            stapleText = special.label;
+            mainDish = commitRecipe(special.recipe, usedIngredients, weeklyUsage, usedDishNames);
+          } else if (dayIndex === noodleDay) {
+            const special = chooseSpecialMeal(noodleMeals, usedIngredients, weeklyUsage, weekIndex + dayIndex, usedDishNames);
+            stapleText = special.label;
+            mainDish = commitRecipe(special.recipe, usedIngredients, weeklyUsage, usedDishNames);
+          } else {
+            stapleRecipe = chooseRecipe(riceStaples, usedIngredients, weeklyUsage, weekIndex + dayIndex, usedDishNames);
+            commitRecipe(stapleRecipe, usedIngredients, weeklyUsage, usedDishNames);
+            stapleText = recipeText(stapleRecipe);
+            if (!mainDish) {
+              mainDish = chooseRecipe(meatDishes, usedIngredients, weeklyUsage, weekIndex * 3 + dayIndex, usedDishNames);
+              commitRecipe(mainDish, usedIngredients, weeklyUsage, usedDishNames);
+            }
+          }
+
+          let veg1 = forcedVegetable;
+          if (!veg1) {
+            veg1 = chooseRecipe(vegetableDishes, usedIngredients, weeklyUsage, weekIndex * 4 + dayIndex * 2, usedDishNames);
+            commitRecipe(veg1, usedIngredients, weeklyUsage, usedDishNames);
+          }
+          const veg2 = chooseRecipe(vegetableDishes, usedIngredients, weeklyUsage, weekIndex * 4 + dayIndex * 2 + 1, usedDishNames);
+          commitRecipe(veg2, usedIngredients, weeklyUsage, usedDishNames);
+          const soup = chooseRecipe(soupDishes, usedIngredients, weeklyUsage, weekIndex + dayIndex, usedDishNames);
+          commitRecipe(soup, usedIngredients, weeklyUsage, usedDishNames);
+          const pairing = chooseRecipe(pairingDishes, usedIngredients, weeklyUsage, weekIndex + dayIndex * 2, usedDishNames);
+          commitRecipe(pairing, usedIngredients, weeklyUsage, usedDishNames);
+          const fruit = chooseRecipe(fruitDishes, usedIngredients, weeklyUsage, weekIndex * 2 + dayIndex, usedDishNames);
+          commitRecipe(fruit, usedIngredients, weeklyUsage, usedDishNames);
+
           let afternoonSnack = afternoonSnacks[(weekIndex + dayIndex) % afternoonSnacks.length];
           if (dayIndex === 0 && constraints.snack !== "无") afternoonSnack += `\n加餐\n（${snackPortion(constraints.snack)}）`;
-          const soup = soupDishes[(weekIndex + dayIndex) % soupDishes.length];
-          const fruit = fruitDishes[(weekIndex * 2 + dayIndex) % fruitDishes.length];
+          const daytimeRecipes = [stapleRecipe, mainDish, veg1, veg2, soup, pairing, fruit].filter(Boolean);
           days.push({
             date,
             breakfast: fixedBreakfasts[dayIndex],
-            staple: recipeText(staple),
-            dishes: [meat, veg1, veg2].map(recipeText).join("\n"),
+            staple: stapleText,
+            dishes: [mainDish, veg1, veg2].map(recipeText).join("\n"),
             soup: recipeText(soup),
-            pairing: dayIndex % 2 ? "海苔碎\n（海苔1g）" : "芝麻拌面\n（芝麻1g、面条15g）",
+            pairing: recipeText(pairing),
             fruit: recipeText(fruit),
             snack: afternoonSnack,
             sick: "",
             nutrition: fixedNutritionMeals[dayIndex],
-            dinner: dinnerForDay(dayIndex, weekIndex, [staple, meat, veg1, veg2, soup, fruit]),
+            dinner: dinnerForDay(dayIndex, weekIndex, daytimeRecipes),
           });
         }
         return days;
