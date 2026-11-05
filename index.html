@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#1f4e78">
-  <title>幼儿园食材用量与菜谱工具 V12</title>
+  <title>幼儿园食材用量与菜谱工具 V13</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
@@ -441,7 +441,7 @@
         <div class="brand-mark" aria-hidden="true">▦</div>
         <div>
           <h1>幼儿园食材用量与菜谱工具</h1>
-          <p>Excel精准读取 · 菜谱智能生成 · 多周独立统计 · V12</p>
+          <p>Excel精准读取 · 菜谱智能生成 · 多周独立统计 · V13</p>
         </div>
       </div>
       <div class="topbar-actions">
@@ -513,7 +513,7 @@
         <h2>上传菜谱 Excel，生成每日食材用量</h2>
         <p class="hero-copy">直接读取Excel单元格，自动忽略“第…周带量”。可指定只识别某一周；不填写周次时，自动统计文件内全部“第…周”工作表。</p>
         <div class="hero-tags">
-          <span class="hero-tag">GitHub版 V12</span>
+          <span class="hero-tag">GitHub版 V13</span>
           <span class="hero-tag">适配GitHub Pages</span>
           <span class="hero-tag">学生人数可修改</span>
           <span class="hero-tag">多周独立数据卡</span>
@@ -631,6 +631,13 @@
         nextId: 1,
       };
       const usageLogStorageKey = "kindergartenFoodToolUsageLogV1";
+      // ===== Supabase全局使用次数配置：只修改下面两行引号内的内容 =====
+      const SUPABASE_PROJECT_URL = "https://iklmequteekjiahlnoiy.supabase.co";
+      const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_iLuyBaoqdRI62sKcT9fH8Q_8LELpZj-";
+      // Project URL示例：https://xxxxxxxxxxxx.supabase.co（末尾不要加/rest/v1/）
+      // Publishable key示例：sb_publishable_xxxxx；旧项目可填写anon public key。
+      // 严禁在网页中填写Secret key、service_role key或数据库密码。
+      // =================================================================
       let currentUsageSessionId = "";
       let memoryUsageLogs = [];
 
@@ -1098,7 +1105,7 @@
           const fileName = `幼儿园菜谱_${rangeName}_${startIso}.xlsx`;
           const mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
           const blob = new Blob([buffer], { type: mime });
-          triggerBlobDownload(blob, fileName);
+          triggerBlobDownload(blob, fileName, true, "new_menu");
           if (typeof File !== "undefined") {
             const generatedFile = new File([buffer], fileName, { type: mime });
             $("targetWeek").value = "";
@@ -1217,17 +1224,69 @@
         showToast.timer = setTimeout(() => toast.classList.remove("show"), 2800);
       }
 
-      function incrementUsageCount() {
-        const storageKey = "kindergartenFoodToolUsageCount";
-        let count = 1;
+      function normalizedSupabaseUrl() {
+        return String(SUPABASE_PROJECT_URL || "").trim().replace(/\/+$/, "").replace(/\/rest\/v1$/i, "");
+      }
+
+      function globalCounterConfigured() {
+        const url = normalizedSupabaseUrl();
+        const key = String(SUPABASE_PUBLISHABLE_KEY || "").trim();
+        return /^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)
+          && key.length > 30
+          && !/PASTE_|YOUR_|在这里|填写/i.test(key);
+      }
+
+      async function callUsageRpc(functionName, payload = {}) {
+        if (!globalCounterConfigured()) throw new Error("Supabase全局计数尚未配置");
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 8000);
         try {
-          const previous = Number.parseInt(localStorage.getItem(storageKey), 10);
-          count = (Number.isFinite(previous) && previous >= 0 ? previous : 0) + 1;
-          localStorage.setItem(storageKey, String(count));
-        } catch (error) {
-          count = 1;
+          const response = await fetch(`${normalizedSupabaseUrl()}/rest/v1/rpc/${functionName}`, {
+            method: "POST",
+            headers: {
+              apikey: String(SUPABASE_PUBLISHABLE_KEY).trim(),
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify(payload),
+            signal: controller.signal,
+          });
+          if (!response.ok) throw new Error(`Supabase RPC ${response.status}`);
+          const value = await response.json();
+          const count = Number(value);
+          if (!Number.isFinite(count) || count < 0) throw new Error("Supabase返回的计数无效");
+          return Math.trunc(count);
+        } finally {
+          clearTimeout(timer);
         }
-        $("usageCount").textContent = String(count);
+      }
+
+      async function refreshGlobalUsageCount() {
+        const badge = $("usageCount");
+        if (!globalCounterConfigured()) {
+          badge.textContent = "0";
+          badge.title = "尚未配置Supabase全局计数";
+          return;
+        }
+        try {
+          badge.textContent = String(await callUsageRpc("get_app_usage"));
+          badge.title = "所有用户成功生成文件的累计次数";
+        } catch (error) {
+          console.error(error);
+          badge.title = "全局计数暂时连接失败";
+        }
+      }
+
+      async function incrementGlobalUsageCount(eventType) {
+        if (!globalCounterConfigured()) return;
+        try {
+          const count = await callUsageRpc("increment_app_usage", { p_event_type: eventType === "new_menu" ? "new_menu" : "report" });
+          $("usageCount").textContent = String(count);
+          $("usageCount").title = "所有用户成功生成文件的累计次数";
+        } catch (error) {
+          console.error(error);
+          $("usageCount").title = "文件已生成，但全局计数写入失败";
+        }
       }
 
       function usageDateTime(date = new Date()) {
@@ -1987,7 +2046,7 @@
         return { dateEntries, normalRows, sickRows, normalTotal, sickTotal };
       }
 
-      function triggerBlobDownload(blob, fileName, includeInUsageLog = true) {
+      function triggerBlobDownload(blob, fileName, includeInUsageLog = true, usageType = "report") {
         if (state.downloadUrl) URL.revokeObjectURL(state.downloadUrl);
         state.downloadUrl = URL.createObjectURL(blob);
         const link = document.createElement("a");
@@ -1997,7 +2056,10 @@
         document.body.appendChild(link);
         link.click();
         link.remove();
-        if (includeInUsageLog) recordGeneratedFile(fileName);
+        if (includeInUsageLog) {
+          recordGeneratedFile(fileName);
+          void incrementGlobalUsageCount(usageType);
+        }
       }
 
       async function exportWorkbook() {
@@ -2456,7 +2518,7 @@
         $("libraryDot").classList.add(ready ? "ready" : "error");
         $("libraryStatus").textContent = ready ? "在线组件已就绪" : "在线组件加载失败";
       });
-      incrementUsageCount();
+      void refreshGlobalUsageCount();
       startUsageSession();
       renderRows();
     })();
